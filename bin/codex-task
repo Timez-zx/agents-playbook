@@ -1,0 +1,332 @@
+#!/usr/bin/env bash
+# codex-task — run the Codex CLI as a delegated worker, archiving every run.
+#
+# Usage:
+#   codex-task run    [opts] (-p TEXT | -f FILE | stdin)    start a new task
+#   codex-task resume RUN_DIR [opts] (-p | -f | stdin)      follow up in the same Codex thread
+#   codex-task review [opts] [--uncommitted | --base BR | --commit SHA] [-p | -f]
+#   codex-task peek   RUN_DIR [N]                           summarize the last N events
+#   codex-task watch  RUN_DIR [INTERVAL_S] [STALL_S]        HB/STALL/DONE lines until the run ends
+#   codex-task ls     [N]                                   list recent runs
+#
+# Options:
+#   -n NAME      run name (default: task)
+#   -t TIER      luna | reserve | sol | astra   (default: sol)
+#   -m MODEL     explicit model id (overrides tier)
+#   -e EFFORT    low | medium | high | xhigh | max (default depends on tier)
+#   -s MODE      ro | rw | full = read-only | workspace-write | danger-full-access (default: ro)
+#   -C DIR       working root (default: $PWD)
+#   --net        allow network access in rw mode
+#   --add-dir D  extra writable dir for rw mode (new runs only; repeatable)
+#   --raw        do not append the handoff contract to the prompt
+#
+# Runs live in $CODEX_RUNS_ROOT (default ~/.claude/codex-runs/<stamp>-<name>/):
+#   prompt.md  events.jsonl  stderr.log  last.md  meta.env  pid  exit_code
+set -uo pipefail
+
+RUNS_ROOT="${CODEX_RUNS_ROOT:-$HOME/.claude/codex-runs}"
+
+die() { echo "codex-task: $*" >&2; exit 2; }
+
+tier_model() {
+  case "$1" in
+    luna) echo gpt-6-luna ;;
+    reserve) echo gpt-reserve ;;
+    sol) echo gpt-6.1-sol ;;
+    astra) echo gpt-6-astra ;;
+    *) die "unknown tier '$1' (luna|reserve|sol|astra)" ;;
+  esac
+}
+
+tier_effort() {
+  case "$1" in
+    luna | reserve) echo medium ;;
+    sol) echo high ;;
+    astra) echo xhigh ;;
+  esac
+}
+
+sandbox_of() {
+  case "$1" in
+    ro) echo read-only ;;
+    rw) echo workspace-write ;;
+    full) echo danger-full-access ;;
+    *) die "unknown sandbox '$1' (ro|rw|full)" ;;
+  esac
+}
+
+read -r -d '' WORK_CONTRACT <<'EOF'
+
+---
+## Handoff contract (from the orchestrating agent)
+- You are a delegated worker. The orchestrator only reads your final message, so put everything it needs there.
+- Stay inside the scope described above. If the task is ambiguous or you are blocked, stop and say so instead of guessing.
+- Write code a human reviewer can read quickly: clear names, small functions, match the surrounding style, comments only where intent is non-obvious.
+- Do not commit, push, or touch files outside the task scope.
+- End your final message with exactly these sections:
+  STATUS: done | partial | blocked
+  CHANGES: each file touched + one-line purpose (or "none")
+  VERIFICATION: commands you ran and their results; say explicitly what you did NOT verify
+  RISKS: assumptions, uncertainties, suggested follow-ups
+EOF
+
+read -r -d '' REVIEW_CONTRACT <<'EOF'
+
+---
+## Reporting format (from the orchestrating agent)
+Report only defects you can tie to a concrete failure. For each finding give:
+severity (high|medium|low), file:line, the defect in one sentence, and a concrete input/state that triggers it.
+If nothing survives scrutiny, say "NO FINDINGS". Do not modify any files.
+EOF
+
+# ---------- event summarizer (shared by run/peek/watch) ----------
+summarize() {  # summarize EVENTS_FILE MODE [N]; MODE = meta | items | last
+  python3 - "$@" <<'PY'
+import json, sys
+path, mode = sys.argv[1], sys.argv[2]
+n = int(sys.argv[3]) if len(sys.argv) > 3 else 20
+thread, usage, items = "", {}, []
+try:
+    lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+except FileNotFoundError:
+    lines = []
+for line in lines:
+    try:
+        ev = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    t = ev.get("type", "")
+    if t == "thread.started":
+        thread = ev.get("thread_id", "")
+    elif t == "turn.completed":
+        for k, v in (ev.get("usage") or {}).items():
+            if isinstance(v, int):
+                usage[k] = usage.get(k, 0) + v
+    elif t in ("item.completed", "error", "turn.failed"):
+        items.append(ev)
+
+def one_line(ev):
+    if ev.get("type") != "item.completed":
+        return f"[{ev.get('type')}] {json.dumps(ev)[:200]}"
+    it = ev.get("item", {})
+    kind = it.get("type", "?")
+    if kind == "agent_message":
+        return "[msg] " + " ".join(it.get("text", "").split())[:200]
+    if kind == "command_execution":
+        return f"[cmd] {it.get('command', '')[:160]} -> exit {it.get('exit_code')}"
+    if kind == "file_change":
+        paths = [f"{c.get('kind', '')}:{c.get('path', '')}" for c in it.get("changes", [])]
+        return "[file] " + ", ".join(paths)[:200]
+    if kind == "reasoning":
+        return "[think] " + " ".join(it.get("text", "").split())[:160]
+    if kind == "todo_list":
+        todo = [("x" if i.get("completed") else " ") + " " + i.get("text", "") for i in it.get("items", [])]
+        return "[todo] " + " | ".join(todo)[:200]
+    return f"[{kind}] " + json.dumps(it)[:160]
+
+if mode == "meta":
+    print(f"THREAD={thread}")
+    print(f"TOKENS_IN={usage.get('input_tokens', 0)}")
+    print(f"TOKENS_CACHED={usage.get('cached_input_tokens', 0)}")
+    print(f"TOKENS_OUT={usage.get('output_tokens', 0)}")
+    print(f"TOKENS_REASONING={usage.get('reasoning_output_tokens', 0)}")
+elif mode == "items":
+    for ev in items[-n:]:
+        print(one_line(ev))
+elif mode == "last":
+    print(f"events={len(items)} last={one_line(items[-1]) if items else '(none yet)'}")
+PY
+}
+
+fmt_secs() { printf '%dm%02ds' $(($1 / 60)) $(($1 % 60)); }
+
+meta_get() { grep -m1 "^$2=" "$1/meta.env" 2>/dev/null | cut -d= -f2-; }
+
+# ---------- run / resume / review ----------
+launch() {
+  local kind="$1"; shift
+  local name=task tier=sol model="" effort="" sbx=ro cwd="$PWD" net=0 raw=0
+  local prompt="" prompt_file="" have_prompt=0 parent="" thread=""
+  local -a add_dirs=() review_target=()
+
+  if [[ "$kind" == resume ]]; then
+    parent="${1:-}"; shift || true
+    [[ -f "$parent/meta.env" ]] || die "resume: '$parent' is not a run directory"
+    thread="$(meta_get "$parent" THREAD)"
+    [[ -n "$thread" ]] || die "resume: no thread id recorded in $parent"
+    name="$(meta_get "$parent" NAME)-followup"
+    model="$(meta_get "$parent" MODEL)"; effort="$(meta_get "$parent" EFFORT)"
+    sbx="$(meta_get "$parent" SANDBOX_SHORT)"; cwd="$(meta_get "$parent" CWD)"
+    net="$(meta_get "$parent" NET)"
+  fi
+
+  while (($#)); do
+    case "$1" in
+      -n) name="$2"; shift 2 ;;
+      -t) tier="$2"; model=""; effort=""; shift 2 ;;
+      -m) model="$2"; shift 2 ;;
+      -e) effort="$2"; shift 2 ;;
+      -s) sbx="$2"; shift 2 ;;
+      -C) cwd="$2"; shift 2 ;;
+      -p) prompt="$2"; have_prompt=1; shift 2 ;;
+      -f) prompt_file="$2"; have_prompt=1; shift 2 ;;
+      --net) net=1; shift ;;
+      --raw) raw=1; shift ;;
+      --add-dir) add_dirs+=(--add-dir "$2"); shift 2 ;;
+      --uncommitted) review_target=(--uncommitted); shift ;;
+      --base) review_target=(--base "$2"); shift 2 ;;
+      --commit) review_target=(--commit "$2"); shift 2 ;;
+      -h | --help) sed -n '2,28p' "$0"; exit 0 ;;
+      *) die "unknown option '$1'" ;;
+    esac
+  done
+
+  [[ -n "$model" ]] || model="$(tier_model "$tier")"
+  [[ -n "$effort" ]] || effort="$(tier_effort "$tier")"
+  [[ -n "$effort" ]] || effort=high
+  [[ "$kind" == review ]] && sbx=ro
+  local sandbox; sandbox="$(sandbox_of "$sbx")"
+  cwd="$(cd "$cwd" 2>/dev/null && pwd)" || die "working dir does not exist"
+
+  if [[ -n "$prompt_file" ]]; then
+    [[ -f "$prompt_file" ]] || die "prompt file '$prompt_file' not found"
+    prompt="$(cat "$prompt_file")"
+  elif ((!have_prompt)) && [[ ! -t 0 ]]; then
+    prompt="$(cat)"
+  fi
+  if [[ -z "${prompt//[[:space:]]/}" && "$kind" != review ]]; then
+    die "empty prompt (use -p TEXT, -f FILE, or pipe it on stdin)"
+  fi
+  if [[ "$kind" == review ]]; then
+    # Codex rejects a review target combined with custom instructions, so fold
+    # the target into the prompt; with neither, review uncommitted changes.
+    if [[ -n "${prompt//[[:space:]]/}" ]] && ((${#review_target[@]})); then
+      local scope
+      case "${review_target[0]}" in
+        --uncommitted) scope='the uncommitted changes in this repository (staged, unstaged and untracked; start from `git status` and `git diff HEAD`)' ;;
+        --base) scope="the changes on the current branch relative to ${review_target[1]} (\`git diff ${review_target[1]}...HEAD\`)" ;;
+        --commit) scope="the changes introduced by commit ${review_target[1]} (\`git show ${review_target[1]}\`)" ;;
+      esac
+      prompt="Review $scope."$'\n\n'"$prompt"
+      review_target=()
+    elif [[ -z "${prompt//[[:space:]]/}" ]] && ((!${#review_target[@]})); then
+      review_target=(--uncommitted)
+    fi
+  fi
+  if ((!raw)) && [[ -n "${prompt//[[:space:]]/}" ]]; then
+    if [[ "$kind" == review ]]; then prompt+="$REVIEW_CONTRACT"; else prompt+="$WORK_CONTRACT"; fi
+  fi
+
+  mkdir -p "$RUNS_ROOT"
+  local run="$RUNS_ROOT/$(date +%Y%m%d-%H%M%S)-${name//[^A-Za-z0-9._-]/_}"
+  [[ -e "$run" ]] && run="$run-$$"
+  mkdir -p "$run"
+  printf '%s\n' "$prompt" > "$run/prompt.md"
+
+  local start; start="$(date +%s)"
+  {
+    echo "NAME=$name"; echo "KIND=$kind"; echo "MODEL=$model"; echo "EFFORT=$effort"
+    echo "SANDBOX=$sandbox"; echo "SANDBOX_SHORT=$sbx"; echo "NET=$net"; echo "CWD=$cwd"
+    echo "PARENT=$parent"; echo "START=$start"
+  } > "$run/meta.env"
+
+  local -a common=(--json --skip-git-repo-check -o "$run/last.md" -m "$model"
+    -c "model_reasoning_effort=\"$effort\"" -c "sandbox_mode=\"$sandbox\"")
+  ((net)) && common+=(-c "sandbox_workspace_write.network_access=true")
+
+  local -a cmd
+  case "$kind" in
+    run) cmd=(codex exec "${common[@]}" -C "$cwd" "${add_dirs[@]}" -) ;;
+    resume) cmd=(codex exec resume "${common[@]}" "$thread" -) ;;
+    review)
+      cmd=(codex exec review "${common[@]}" "${review_target[@]}")
+      [[ -n "${prompt//[[:space:]]/}" ]] && cmd+=(-)
+      ;;
+  esac
+
+  echo "codex-task: $kind '$name' -> $run ($model/$effort, $sandbox)" >&2
+  (cd "$cwd" && exec "${cmd[@]}") < "$run/prompt.md" > "$run/events.jsonl" 2> "$run/stderr.log" &
+  local pid=$!
+  echo "$pid" > "$run/pid"
+  wait "$pid"
+  local rc=$?
+  echo "$rc" > "$run/exit_code"
+
+  local end; end="$(date +%s)"
+  echo "END=$end" >> "$run/meta.env"
+  echo "EXIT=$rc" >> "$run/meta.env"
+  summarize "$run/events.jsonl" meta >> "$run/meta.env"
+
+  echo "RUN     $run"
+  echo "MODEL   $model/$effort   SANDBOX $sandbox$( ((net)) && echo ' +net')   CWD $cwd"
+  echo "EXIT    $rc   TIME $(fmt_secs $((end - start)))   THREAD $(meta_get "$run" THREAD)"
+  echo "TOKENS  in=$(meta_get "$run" TOKENS_IN) cached=$(meta_get "$run" TOKENS_CACHED) out=$(meta_get "$run" TOKENS_OUT) reasoning=$(meta_get "$run" TOKENS_REASONING)"
+  if ((rc != 0)); then
+    echo "----- stderr (tail) -----"; tail -n 20 "$run/stderr.log"
+  fi
+  if git -C "$cwd" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "----- git status ($cwd) -----"
+    git -C "$cwd" status --short | head -n 40
+  fi
+  echo "----- final message -----"
+  if [[ -s "$run/last.md" ]]; then
+    head -n 200 "$run/last.md"
+    (($(wc -l < "$run/last.md") > 200)) && echo "... (truncated; full text in $run/last.md)"
+  else
+    echo "(no final message)"
+  fi
+  return "$rc"
+}
+
+# ---------- peek / watch / ls ----------
+peek() {
+  local run="${1:?usage: codex-task peek RUN_DIR [N]}" n="${2:-20}"
+  summarize "$run/events.jsonl" items "$n"
+}
+
+watch_run() {
+  local run="${1:?usage: codex-task watch RUN_DIR [INTERVAL_S] [STALL_S]}"
+  local interval="${2:-120}" stall="${3:-600}"
+  local start; start="$(meta_get "$run" START)"
+  while :; do
+    if [[ -f "$run/exit_code" ]]; then
+      echo "DONE exit=$(cat "$run/exit_code") $(summarize "$run/events.jsonl" last)"
+      return 0
+    fi
+    local pid; pid="$(cat "$run/pid" 2>/dev/null)"
+    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null && [[ ! -f "$run/exit_code" ]]; then
+      sleep 2
+      [[ -f "$run/exit_code" ]] && continue
+      echo "DONE exit=unknown (process gone, no exit_code) $(summarize "$run/events.jsonl" last)"
+      return 1
+    fi
+    local now age; now="$(date +%s)"
+    age=$((now - $(stat -c %Y "$run/events.jsonl" 2>/dev/null || echo "$now")))
+    if ((age >= stall)); then
+      echo "STALL no new events for $(fmt_secs "$age") elapsed=$(fmt_secs $((now - start)))"
+    else
+      echo "HB elapsed=$(fmt_secs $((now - start))) $(summarize "$run/events.jsonl" last)"
+    fi
+    sleep "$interval"
+  done
+}
+
+list_runs() {
+  local n="${1:-15}" run
+  for run in $(ls -1d "$RUNS_ROOT"/*/ 2>/dev/null | sort | tail -n "$n"); do
+    run="${run%/}"
+    local rc; rc="$(cat "$run/exit_code" 2>/dev/null || echo running)"
+    printf '%-48s %-7s %-22s exit=%-7s %s\n' "$(basename "$run")" "$(meta_get "$run" KIND)" \
+      "$(meta_get "$run" MODEL)/$(meta_get "$run" EFFORT)" "$rc" \
+      "$(grep -m1 '^STATUS:' "$run/last.md" 2>/dev/null)"
+  done
+}
+
+case "${1:-}" in
+  run | resume | review) kind="$1"; shift; launch "$kind" "$@" ;;
+  peek) shift; peek "$@" ;;
+  watch) shift; watch_run "$@" ;;
+  ls) shift; list_runs "$@" ;;
+  -h | --help | "") sed -n '2,28p' "$0" ;;
+  *) die "unknown subcommand '$1' (run|resume|review|peek|watch|ls)" ;;
+esac
