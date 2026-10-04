@@ -1,8 +1,8 @@
 # Current state
 
 - **Current front:** Claude (Claude Code).
-- **Validated:** Claude front + Codex workers via `codex-task`; `run`, `resume`, `review`, `peek`, `watch`, `ls` tested live 2026-10-04.
-- **Partially validated:** `claude-task`: rw and resume validated live 2026-10-04; ro validated live with the corrected flag set (bash sandbox disabled); re-test of the final wrapper pending. Run was exercised in the live permission tests.
+- **Validated (live, 2026-10-04):** Claude front + Codex workers via `codex-task` (`run`, `resume`, `review`, `peek`, `watch`, `ls`, `--search`); `claude-task` final wrapper (`run` with ro and rw write probes inside/outside the working directory, `resume`); `agent-quota`; `model-review` (forced dry-run, silent fresh re-check).
+- **Partially validated:** `model-review` research run (offline tests only); `install.sh` (offline tests; first real install pending).
 - **Not validated:** Codex front (opt-in skill), budget thresholds, and human preference for the report pass (W6).
 - **Open proposals:** None.
 - **Last updated:** 2026-10-04.

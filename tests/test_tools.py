@@ -91,7 +91,7 @@ def test_wrappers():
             assert meta["EFFORT"] == "high"
             assert 'sandbox_mode="read-only"' in argv
             assert (meta["TOKENS_IN"], meta["TOKENS_CACHED"], meta["TOKENS_OUT"]) == ("89566", "82432", "1008")
-            assert meta["THREAD"] == "01a1085c-02d3-7a12-bd8c-b27a18629aa9"
+            assert meta["THREAD"] == "00000000-0000-4000-8000-000000000001"
             assert (run / "last.md").read_text().startswith("STATUS: done")
         else:
             assert argv[:4] == ["-p", "--output-format", "stream-json", "--verbose"]
@@ -99,7 +99,7 @@ def test_wrappers():
             assert flag(argv, "--effort") == meta["EFFORT"] == "medium"
             assert_permissions(argv, "ro")
             assert (meta["TOKENS_IN"], meta["TOKENS_CACHED"], meta["TOKENS_OUT"], meta["TOKENS_REASONING"]) == ("62666", "53439", "173", "88")
-            assert meta["THREAD"] == "309a2ec4-dc21-4cf0-80d0-1f58f2a41831"
+            assert meta["THREAD"] == "00000000-0000-4000-8000-000000000002"
             assert meta["COST_USD"] == "0.0246459"
             assert meta["CLAUDE_UTIL_FIVE_HOUR"] == "0.11" and meta["CLAUDE_RESETS_FIVE_HOUR"] == "1791156600"
             assert (run / "last.md").read_text() == "PONG\n"

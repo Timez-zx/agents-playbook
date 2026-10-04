@@ -15,7 +15,7 @@ Two substantial documentation rounds used a fresh Writer thread followed by a la
 
 The fresh run used 299k input tokens (264k cached) in 12.8 minutes. The next large revision resumed that thread and used 1.33M input tokens (1.23M cached) in 17.4 minutes. Each step re-sent the whole growing thread.
 
-Short resumed follow-ups were cheap, with 90–97% cached input. This round is the first application of the fresh-session approach for a large revision.
+Short resumed follow-ups were cheap, with 90–97% cached input. The following large revision round, started fresh with a precise spec, used 880k input tokens (795k cached) in 14.7 minutes: less than the resumed round, but the rounds differ in scope, so this is weak support.
 
 ## Lesson
 

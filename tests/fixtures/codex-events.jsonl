@@ -1,4 +1,4 @@
-{"type": "thread.started", "thread_id": "01a1085c-02d3-7a12-bd8c-b27a18629aa9"}
+{"type": "thread.started", "thread_id": "00000000-0000-4000-8000-000000000001"}
 {"type": "turn.started"}
 {"type": "item.completed", "item": {"id": "item_0", "type": "agent_message", "text": "`median()` already calls `sorted(xs)`, which sorts a new list. I’ll add an assertion that verifies the original list stays in its original order, then rerun the tests."}}
 {"type": "item.started", "item": {"id": "item_1", "type": "file_change", "changes": [{"path": "/work/demo/test_stats.py", "kind": "update"}], "status": "in_progress"}}
