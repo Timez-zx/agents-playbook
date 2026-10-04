@@ -62,17 +62,20 @@ def quota(agent, now):
         if not files:
             errors.append(f"Cannot read Codex quota: no rollout files in {root}")
             return result
-        modified, path = files[0]
+        # Some runs (e.g. `codex exec review`) record no rate_limits; use the newest file that does.
         limits = None
-        try:
-            for event in read_events(path):
-                value = object_of(event.get("payload")).get("rate_limits", event.get("rate_limits"))
-                if isinstance(value, dict):
-                    limits = value
-        except OSError as error:
-            errors.append(f"Cannot read {path}: {error.strerror}")
+        for modified, path in files[:50]:
+            try:
+                for event in read_events(path):
+                    value = object_of(event.get("payload")).get("rate_limits", event.get("rate_limits"))
+                    if isinstance(value, dict):
+                        limits = value
+            except OSError as error:
+                errors.append(f"Cannot read {path}: {error.strerror}")
+            if limits is not None:
+                break
         if limits is None:
-            errors.append(f"Cannot read Codex quota: no rate_limits object in {path}")
+            errors.append(f"Cannot read Codex quota: no rate_limits object in the newest {min(len(files), 50)} rollout files")
             return result
         result.update(source=str(path), age_seconds=max(0, now - modified),
                       plan_type=limits.get("plan_type"), credits=limits.get("credits"))

@@ -252,6 +252,7 @@ launch() {
   else
     echo "(no final message)"
   fi
+  echo
   "$REPO_ROOT/bin/agent-quota" --codex-line
   return "$rc"
 }

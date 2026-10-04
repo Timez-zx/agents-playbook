@@ -324,6 +324,9 @@ def test_quota():
     newer = claude_quota(env, 95, 50, name="20000103-000000-claude-newer")
     assert get_quota(env)["claude"]["source"] == str(newer)
     newest.write_text('invalid\n{"payload":{"rate_limits":null}}\n')
+    fallback = get_quota(env)["codex"]
+    assert fallback["source"] == str(old) and fallback["windows"]["primary"]["used_percent"] == 95
+    old.write_text('{"payload":{}}\n')
     assert not get_quota(env)["codex"]["windows"]
     env = quota_env("critical-routing")
     codex_quota(env, 80, 50)
