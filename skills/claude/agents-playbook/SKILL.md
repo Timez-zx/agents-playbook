@@ -60,7 +60,7 @@ Over-burning = used percent > elapsed percent +20 points. >90% takes priority; a
 3. Debug: Planner ranked hypotheses/log points → Executor throttled probes → front experiment → Verifier cited logs → Planner bisection.
 4. Prototype: Planner/front validates → Executor readable rewrite under same tests → front verifies.
 5. Disagreement: exact claim → decisive test or fresh astra max without either side's reasoning → settle once; never average. Reopen only with new evidence.
-6. Report >about 15 lines: verified facts → Writer sol high (luna short/simple), `-s ro --raw` → front checks facts unchanged → human. Full-pass preference remains unvalidated.
+6. Reports >about 15 lines, PR descriptions, README-level docs: front skeleton → fresh Writer sol high → fresh cold reader luna medium → front triages, Writer resumes fixes, front checks facts. Both workers use `-s ro --raw`; templates and rules: [W6](repo/playbook/patterns.md#w6-structure--prose--cold-read--checked-fixes).
 
 Treat “done” as a claim: test, diff read, or other-model check; one verifier per aspect. Critical tooling gets independent code review plus live write probes inside/outside working directory. Resume short fixes; fresh precise specs for large revisions. Details: [repo/playbook/patterns.md](repo/playbook/patterns.md).
 
@@ -89,7 +89,7 @@ Give Goal / Context / Scope (may/must not change) / Requirements / Acceptance (e
 
 Both wrappers export `AGENT_ROLE=worker` and append: “You are a worker. Do not delegate to other agents and do not run codex-task or claude-task.” Require scope, stop on ambiguity, readable code, no commit/push, bounded STATUS/CHANGES/VERIFICATION (run + NOT verified)/RISKS. User-level skills also reach workers; account for conflicts without assuming code-quality failure. Reviews never edit; report severity, file:line, defect, trigger or NO FINDINGS.
 
-Persistent prose gets Writer pass. Short replies: top-down, accurate, concise; one idea per short sentence, concrete facts, separate `Action:` if needed, tables for comparisons, explain internal labels. Define unfamiliar terms; GPU/PR/CLI/JSON/API need no expansion. Match human language; repo English. [repo/playbook/writing.md](repo/playbook/writing.md).
+Persistent prose gets Writer pass; front supplies structure and evidence, then checks facts. Short replies follow [repo/playbook/writing.md](repo/playbook/writing.md) directly: standalone claims, same-kind points, comfortable paragraphs, plain description before technical terms. Keep prose top-down, accurate, concise; use concrete facts, tables for comparisons, and a separate `Action:` if needed. Match human language; repo English.
 
 ## After delivery and upkeep
 

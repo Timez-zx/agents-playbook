@@ -2,7 +2,9 @@
 
 ## Strengths
 
-Owner, 2026-10-04: Codex is “more rigorous and detailed”; its “written output is easier for humans to read.” The [readability evidence](lessons/2026-10-04-writer-readability.md) supports Writer, not validation of the full report pass.
+Owner, 2026-10-04: Codex is “more rigorous and detailed”; its “written output is easier for humans to read.” The earlier [readability evidence](lessons/2026-10-04-writer-readability.md) supports Writer.
+
+One owner-approved report on 2026-10-04 supports sol high for prose and fresh luna medium for cold reading: the reader recovered the full structure and caught real issues, with some over-flagging. See the [pyramid-process evidence](lessons/2026-10-04-pyramid-report-process.md).
 
 A fresh gpt-6-astra review independently found the read-only defect and four other high-severity defects missed by live probes. The [review incident](lessons/2026-10-04-ro-tier-defect.md) supports Verifier; it does not compare astra with sol on the same review. The [owner's sol comparison](lessons/2026-10-04-sol-routing-default.md) supports current routing.
 

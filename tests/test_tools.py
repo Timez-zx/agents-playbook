@@ -111,8 +111,10 @@ def test_wrappers():
             assert args[:2] == ["exec", "resume"] and args[-2:] == [meta["THREAD"], "-"]
         else:
             assert flag(args, "--resume") == meta["THREAD"]
-        _, _, _, text = launch(agent, "run", "-n", "raw", "-C", WORK, "--raw", "-f", prompt_file)
-        assert text == prompt_file.read_text() and "Handoff contract" not in text
+        raw_run, raw_meta, _, text = launch(agent, "run", "-n", "raw", "-C", WORK, "--raw", "-f", prompt_file)
+        assert text == prompt_file.read_text() and "Handoff contract" not in text and raw_meta["RAW"] == "1"
+        _, _, _, text = launch(agent, "resume", raw_run, "-p", "fix one line")
+        assert text.strip() == "fix one line", repr(text[:300])  # raw is inherited on resume
         _, _, _, text = launch(agent, "run", "-n", "stdin", "-C", WORK, stdin="stdin input")
         assert text.startswith("stdin input") and GUARD in text
         for target, value, phrase in (("--uncommitted", None, "staged, unstaged and untracked"), ("--base", "main", "git diff main...HEAD"), ("--commit", "deadbeef", "git show deadbeef")):
