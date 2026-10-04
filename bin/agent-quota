@@ -85,7 +85,7 @@ def quota(agent, now):
                 result["windows"][key] = data
     else:
         root = Path(os.environ.get("AGENT_RUNS_ROOT") or str(Path.home() / ".agent-runs"))
-        files = candidates(root, "*-claude-*/events.jsonl", errors)
+        files = candidates(root, "????????-??????-claude-*/events.jsonl", errors)
         for modified, path in files:
             windows = {}
             try:
@@ -97,14 +97,15 @@ def quota(agent, now):
                 continue
             if not windows:
                 continue
-            result.update(source=str(path), age_seconds=max(0, now - modified))
+            if result["source"] is None:
+                result.update(source=str(path), age_seconds=max(0, now - modified))
             for key, values in windows.items():
                 utilization = number(values.get("utilization"))
                 data = window(utilization * 100 if utilization is not None else None,
                               values.get("resetsAt"), {"five_hour": 18000, "seven_day": 604800}.get(key), now)
-                if data is not None:
+                if data is not None and key not in result["windows"]:
+                    data.update(source=str(path), age_seconds=max(0, now - modified))
                     result["windows"][key] = data
-            break
         if result["source"] is None:
             errors.append(f"Cannot read Claude quota: no rate_limit_event in {root}/*-claude-*/events.jsonl")
 
@@ -142,7 +143,8 @@ def summary(agent, data):
     for key, values in data["windows"].items():
         elapsed = values["elapsed_percent"]
         elapsed_text = f"{elapsed:.1f}%" if elapsed is not None else "unknown"
-        parts.append(f"{key} used={values['used_percent']:.1f}% elapsed={elapsed_text} {values['status']}")
+        age = f" age={values['age_seconds']:.0f}s" if "age_seconds" in values else ""
+        parts.append(f"{key} used={values['used_percent']:.1f}% elapsed={elapsed_text} {values['status']}{age}")
     return f"{prefix}: " + "; ".join(parts) + f" (record age {data['age_seconds']:.0f}s)"
 
 

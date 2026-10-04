@@ -3,6 +3,11 @@
 import argparse
 import json
 import math
+import os
+from pathlib import Path
+import signal
+import subprocess
+import time
 import re
 import sys
 
@@ -20,6 +25,10 @@ def read_events(path):
 
 def object_of(value):
     return value if isinstance(value, dict) else {}
+
+
+def list_of(value):
+    return value if isinstance(value, list) else []
 
 
 def numeric(value):
@@ -51,12 +60,12 @@ def codex_item(event):
     if kind == "command_execution":
         return "[cmd] " + compact(f"{compact(item.get('command', ''), 160)} -> exit {item.get('exit_code')}")
     if kind == "file_change":
-        changes = item.get("changes") or []
+        changes = list_of(item.get("changes"))
         return "[file] " + compact(", ".join(f"{c.get('kind', '')}:{c.get('path', '')}" for c in changes if isinstance(c, dict)))
     if kind == "reasoning":
         return "[think] " + compact(item.get("text", ""), 160)
     if kind == "todo_list":
-        tasks = item.get("items") or []
+        tasks = list_of(item.get("items"))
         return "[todo] " + compact(" | ".join(("x" if i.get("completed") else " ") + " " + str(i.get("text", "")) for i in tasks if isinstance(i, dict)))
     return "[tool] " + compact(item, 160)
 
@@ -111,7 +120,7 @@ def summarize(agent, events):
                 final = item.get("text", "")
             line = codex_item(event)
             if line is not None:
-                items.append(line)
+                items.append(" ".join(line.split()))
         else:
             if event.get("session_id"):
                 meta["THREAD"] = event["session_id"]
@@ -133,11 +142,114 @@ def summarize(agent, events):
                         meta["CLAUDE_RESETS_" + key] = values["resetsAt"]
             lines = list(claude_items(event))
             if lines:
-                items.append(" | ".join(lines))
+                items.append(" ".join(" | ".join(lines).split()))
     return meta, items, final
 
 
+def rollout_usage(thread):
+    if not thread:
+        return None
+    files = list((Path.home() / ".codex/sessions").glob("????/??/??/rollout-*.jsonl"))
+    files.sort(key=lambda p: thread not in p.name)
+    for path in files:
+        matched, usage = thread in path.name, None
+        try:
+            for event in read_events(path):
+                payload = object_of(event.get("payload"))
+                if event.get("type") == "session_meta" and payload.get("id") == thread:
+                    matched = True
+                info = object_of(payload.get("info"))
+                counts = info.get("last_token_usage") or info.get("total_token_usage")
+                if isinstance(counts, dict):
+                    usage = counts
+        except OSError:
+            continue
+        if matched and usage:
+            return usage
+    return None
+
+
+def run_worker(cwd, command):
+    # Own a process group so cancelling a wrapper also stops its worker's children.
+    if sys.platform.startswith("linux"):
+        import ctypes
+        ctypes.CDLL(None).prctl(36, 1, 0, 0, 0)  # PR_SET_CHILD_SUBREAPER
+    interrupted = 0
+    deadline = None
+    child = None
+
+    def forward(signum, _frame):
+        nonlocal interrupted, deadline
+        if not interrupted:
+            interrupted = signum
+            deadline = time.monotonic() + 2
+        if child is not None:
+            try:
+                os.killpg(child.pid, signum)
+            except ProcessLookupError:
+                pass
+
+    for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(signum, forward)
+    try:
+        child = subprocess.Popen(command, cwd=cwd, start_new_session=True,
+                                 env=dict(os.environ, AGENT_ROLE="worker"))
+    except OSError as error:
+        print(f"worker: {error}", file=sys.stderr)
+        return 127
+    if interrupted:
+        forward(interrupted, None)
+    while True:
+        try:
+            rc = child.wait(timeout=.1)
+            break
+        except subprocess.TimeoutExpired:
+            if deadline is not None and time.monotonic() >= deadline:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+    # Reap adopted descendants, escalating if a worker left processes behind.
+    try:
+        os.killpg(child.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    def stop_adopted(signum):
+        if not sys.platform.startswith("linux"):
+            return
+        children = Path(f"/proc/self/task/{os.getpid()}/children")
+        try:
+            pids = children.read_text().split()
+        except OSError:
+            return
+        for pid in pids:
+            try:
+                os.kill(int(pid), signum)
+            except ProcessLookupError:
+                pass
+
+    stop_adopted(signal.SIGTERM)
+    deadline = time.monotonic() + 2
+    while True:
+        try:
+            pid, _ = os.waitpid(-1, os.WNOHANG)
+        except ChildProcessError:
+            break
+        if pid:
+            continue
+        if time.monotonic() >= deadline:
+            stop_adopted(signal.SIGKILL)
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        time.sleep(.01)
+    return 128 + interrupted if interrupted else (128 - rc if rc < 0 else rc)
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "worker":
+        raise SystemExit(run_worker(sys.argv[2], sys.argv[3:]))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("meta", "items", "last", "final"))
     parser.add_argument("agent", choices=("codex", "claude"))
@@ -151,6 +263,12 @@ def main():
         events = []
     meta, items, final = summarize(args.agent, events)
     if args.command == "meta":
+        token_keys = ("TOKENS_IN", "TOKENS_CACHED", "TOKENS_OUT", "TOKENS_REASONING")
+        if args.agent == "codex" and not any(meta[key] for key in token_keys):
+            usage = rollout_usage(meta["THREAD"])
+            fields = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
+            for key, field in zip(token_keys, fields):
+                meta[key] = numeric(usage.get(field)) if usage else "unknown"
         for key, value in meta.items():
             print(f"{key}={compact(value, 10000)}")
     elif args.command == "items":

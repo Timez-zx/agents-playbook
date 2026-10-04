@@ -16,12 +16,16 @@
 #   -e EFFORT    low | medium | high | xhigh | max (haiku: unset, sonnet: medium, opus: high)
 #   -s MODE      ro | rw | full = default | acceptEdits | bypassPermissions (default: ro)
 #   -C DIR       working root (default: $PWD)
-#   --net        unsupported in v1; use -s full if network access is needed
+#   --net        unsupported: no confirmed unrestricted sandbox network setting
 #   --add-dir D  extra accessible directory (repeatable)
 #   --raw        do not append the handoff contract to the prompt
 #
+# ro: read files and run read-only commands; cannot run tests.
+# rw: confined Bash writes/tests; Linux requires bwrap and socat; network blocked.
+#
 # Runs live in ${AGENT_RUNS_ROOT:-$HOME/.agent-runs}/<stamp>-claude-<name>/:
 #   prompt.md  events.jsonl  stderr.log  last.md  meta.env  pid  exit_code
+# Read-only reviewers cannot run test suites that write temporary files.
 set -uo pipefail
 
 RUNS_ROOT="${AGENT_RUNS_ROOT:-$HOME/.agent-runs}"
@@ -123,16 +127,20 @@ launch() {
       --uncommitted) review_target=(--uncommitted); shift ;;
       --base) review_target=(--base "$2"); shift 2 ;;
       --commit) review_target=(--commit "$2"); shift 2 ;;
-      -h | --help) sed -n '2,24p' "$0"; exit 0 ;;
+      -h | --help) sed -n '2,/^set /{ /^set /!p; }' "$0"; exit 0 ;;
       *) die "unknown option '$1'" ;;
     esac
   done
 
   [[ -n "$model" ]] || model="$(tier_model "$tier")" || return 2
   if [[ -z "$effort" ]] && ((use_tier_effort)); then effort="$(tier_effort "$tier")"; fi
-  ((net)) && die "--net is not supported in v1; use -s full for network access"
+  ((net)) && die "--net is not supported: no confirmed unrestricted sandbox network setting; use -s full if unrestricted access is intended"
   [[ "$kind" == review ]] && sbx=ro
   local sandbox; sandbox="$(sandbox_of "$sbx")" || return 2
+  if [[ "$sbx" == rw && "$(uname -s)" == Linux ]]; then
+    command -v bwrap >/dev/null && command -v socat >/dev/null || die "rw sandbox requires bwrap and socat on PATH; install with: sudo apt-get install bubblewrap socat"
+    bwrap --ro-bind / / --unshare-user --unshare-pid --unshare-net --proc /proc --dev /dev -- true >/dev/null 2>&1 || die "rw sandbox cannot start bubblewrap; refusing unsandboxed fallback"
+  fi
   cwd="$(cd "$cwd" 2>/dev/null && pwd)" || die "working dir does not exist"
 
   if [[ -n "$prompt_file" ]]; then
@@ -160,10 +168,18 @@ launch() {
     if [[ "$kind" == review ]]; then prompt+="$REVIEW_CONTRACT"; else prompt+="$WORK_CONTRACT"; fi
   fi
 
-  mkdir -p "$RUNS_ROOT"
-  local run="$RUNS_ROOT/$(date +%Y%m%d-%H%M%S)-claude-${name//[^A-Za-z0-9._-]/_}"
-  [[ -e "$run" ]] && run="$run-$$"
-  mkdir -p "$run"
+  local value
+  for value in "$name" "$model" "$effort" "$sbx" "$cwd" "$parent" "$thread"; do
+    [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || die "metadata values cannot contain newlines"
+  done
+  mkdir -p "$RUNS_ROOT" || die "cannot create runs root"
+  local base="$RUNS_ROOT/$(date +%Y%m%d-%H%M%S)-claude-${name//[^A-Za-z0-9._-]/_}" run attempt=0
+  while :; do
+    run="$base"; ((attempt)) && run="$base-$$-$attempt"
+    mkdir -- "$run" 2>/dev/null && break
+    [[ -e "$run" ]] || die "cannot create run directory '$run'"
+    ((attempt+=1))
+  done
   printf '%s\n' "$prompt" > "$run/prompt.md"
 
   local start; start="$(date +%s)"
@@ -180,27 +196,40 @@ launch() {
   if [[ "$sbx" == ro ]]; then denied+=,Edit,Write,NotebookEdit; fi
   cmd+=(--disallowedTools "$denied")
   if [[ "$sbx" != full ]]; then
-    cmd+=(--settings '{"sandbox":{"enabled":true,"autoAllowBashIfSandboxed":true}}')
+    cmd+=(--setting-sources "" --permission-prompts none --strict-mcp-config --mcp-config '{"mcpServers":{}}')
+    if [[ "$sbx" == ro ]]; then
+      cmd+=(--settings '{"sandbox":{"enabled":false}}')
+    else
+      cmd+=(--settings '{"sandbox":{"enabled":true,"autoAllowBashIfSandboxed":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false}}')
+    fi
   fi
   cmd+=("${add_dirs[@]}")
   [[ "$kind" == resume ]] && cmd+=(--resume "$thread")
 
-  echo "claude-task: $kind '$name' -> $run ($model/$effort, $sandbox)" >&2
-  (cd "$cwd" && exec env AGENT_ROLE=worker "${cmd[@]}") < "$run/prompt.md" > "$run/events.jsonl" 2> "$run/stderr.log" &
-  local pid=$!
-  echo "$pid" > "$run/pid"
-  wait "$pid"
-  local rc=$?
-  echo "$rc" > "$run/exit_code"
+  echo "claude-task: $kind '$name' -> $run ($model${effort:+/$effort}, $sbx ($sandbox))" >&2
+  python3 "$REPO_ROOT/lib/agent_events.py" worker "$cwd" "${cmd[@]}" < "$run/prompt.md" > "$run/events.jsonl" 2> "$run/stderr.log" &
+  local pid=$! interrupted=0 rc
+  # Keep watch attached through archive finalization.
+  echo "$$" > "$run/pid"
+  trap 'interrupted=130; kill -INT "$pid" 2>/dev/null || true' INT
+  trap 'interrupted=143; kill -TERM "$pid" 2>/dev/null || true' TERM
+  trap 'interrupted=129; kill -HUP "$pid" 2>/dev/null || true' HUP
+  wait "$pid"; rc=$?
+  if ((interrupted)); then wait "$pid"; rc=$interrupted; fi
+  trap '' INT TERM HUP
 
   local end; end="$(date +%s)"
   echo "END=$end" >> "$run/meta.env"
   echo "EXIT=$rc" >> "$run/meta.env"
   summarize "$run/events.jsonl" meta >> "$run/meta.env"
   summarize "$run/events.jsonl" final > "$run/last.md"
+  [[ -e "$run/last.md" ]] || : > "$run/last.md"
+  printf '%s\n' "$rc" > "$run/exit_code.tmp"
+  mv -- "$run/exit_code.tmp" "$run/exit_code"
+  trap - INT TERM HUP
 
   echo "RUN     $run"
-  echo "MODEL   $model/$effort   SANDBOX $sandbox$( ((net)) && echo ' +net')   CWD $cwd"
+  echo "MODEL   $model${effort:+/$effort}   SANDBOX $sbx ($sandbox)$( ((net)) && echo ' +net')   CWD $cwd"
   echo "EXIT    $rc   TIME $(fmt_secs $((end - start)))   THREAD $(meta_get "$run" THREAD)"
   echo "TOKENS  in=$(meta_get "$run" TOKENS_IN) cached=$(meta_get "$run" TOKENS_CACHED) out=$(meta_get "$run" TOKENS_OUT) reasoning=$(meta_get "$run" TOKENS_REASONING)"
   if ((rc != 0)); then
@@ -229,14 +258,24 @@ peek() {
 watch_run() {
   local run="${1:?usage: claude-task watch RUN_DIR [INTERVAL_S] [STALL_S]}"
   local interval="${2:-120}" stall="${3:-600}"
+  [[ -d "$run" && -f "$run/meta.env" ]] || die "watch: '$run' is not a run directory"
   local start; start="$(meta_get "$run" START)"
+  [[ "$start" =~ ^[0-9]+$ ]] || die "watch: missing or invalid START"
+  local grace=$(( $(date +%s) + 2 ))
   while :; do
     if [[ -f "$run/exit_code" ]]; then
       echo "DONE exit=$(cat "$run/exit_code") $(summarize "$run/events.jsonl" last)"
       return 0
     fi
     local pid; pid="$(cat "$run/pid" 2>/dev/null)"
-    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null && [[ ! -f "$run/exit_code" ]]; then
+    if [[ ! "$pid" =~ ^[1-9][0-9]*$ ]]; then
+      if (( $(date +%s) >= grace )); then
+        echo "DONE exit=unknown (no worker pid) $(summarize "$run/events.jsonl" last)"
+        return 1
+      fi
+      sleep .1
+      continue
+    elif ! kill -0 "$pid" 2>/dev/null && [[ ! -f "$run/exit_code" ]]; then
       sleep 2
       [[ -f "$run/exit_code" ]] && continue
       echo "DONE exit=unknown (process gone, no exit_code) $(summarize "$run/events.jsonl" last)"
@@ -258,11 +297,13 @@ list_runs() {
   while IFS= read -r run; do
     run="${run%/}"
     [[ -d "$run" ]] || continue
+    local display_model display_effort
+    display_model="$(meta_get "$run" MODEL)"; display_effort="$(meta_get "$run" EFFORT)"
     local rc; rc="$(cat "$run/exit_code" 2>/dev/null || echo running)"
     printf '%-48s %-7s %-22s exit=%-7s %s\n' "$(basename "$run")" "$(meta_get "$run" KIND)" \
-      "$(meta_get "$run" MODEL)/$(meta_get "$run" EFFORT)" "$rc" \
+      "$display_model${display_effort:+/$display_effort}" "$rc" \
       "$(grep -m1 '^STATUS:' "$run/last.md" 2>/dev/null)"
-  done < <(printf '%s\n' "$RUNS_ROOT"/*-claude-*/ | sort | tail -n "$n")
+  done < <(printf '%s\n' "$RUNS_ROOT"/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-claude-*/ | sort | tail -n "$n")
 }
 
 case "${1:-}" in
@@ -270,6 +311,6 @@ case "${1:-}" in
   peek) shift; peek "$@" ;;
   watch) shift; watch_run "$@" ;;
   ls) shift; list_runs "$@" ;;
-  -h | --help | "") sed -n '2,24p' "$0" ;;
+  -h | --help | "") sed -n '2,/^set /{ /^set /!p; }' "$0" ;;
   *) die "unknown subcommand '$1' (run|resume|review|peek|watch|ls)" ;;
 esac

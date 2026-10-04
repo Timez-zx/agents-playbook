@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""Check local model lists and start one detached research run when they change."""
+import argparse
+from datetime import datetime, timezone
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import statistics
+import subprocess
+import tempfile
+import time
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def load_json(path, default):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return default
+
+
+def atomic_write(path, text):
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as output:
+        output.write(text)
+        temporary = Path(output.name)
+    temporary.replace(path)
+
+
+def current_codex(previous):
+    data = load_json(Path.home() / ".codex/models_cache.json", None)
+    if not isinstance(data, dict) or not isinstance(data.get("models"), list):
+        return previous, "Codex cache unavailable; previous recorded list retained."
+    models = []
+    for model in data["models"]:
+        if isinstance(model, dict) and isinstance(model.get("slug"), str):
+            models.append({key: model.get(key) for key in
+                           ("slug", "display_name", "description", "supported_reasoning_levels", "default_reasoning_level")})
+    return sorted(models, key=lambda model: model["slug"]), ""
+
+
+def model_ids(snapshot, agent):
+    if agent == "codex":
+        return {model["slug"] for model in snapshot.get(agent, []) if isinstance(model, dict) and isinstance(model.get("slug"), str)}
+    return set(snapshot.get(agent, []))
+
+
+def numeric(value):
+    try:
+        number = float(value)
+        return number if math.isfinite(number) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def median(values):
+    return f"{statistics.median(values):g}" if values else "unknown"
+
+
+def run_statistics(root):
+    groups = {}
+    for path in root.glob("*/meta.env"):
+        try:
+            meta = dict(line.split("=", 1) for line in path.read_text().splitlines() if "=" in line)
+            final = (path.parent / "last.md").read_text()
+        except OSError:
+            continue
+        key = tuple(meta.get(field, "unknown") for field in ("AGENT", "MODEL", "EFFORT"))
+        row = groups.setdefault(key, dict(runs=0, failures=0, duration=[], tokens_in=[], tokens_out=[]))
+        row["runs"] += 1
+        status = re.search(r"^STATUS:\s*(\w+)", final, re.MULTILINE)
+        row["failures"] += meta.get("EXIT") != "0" or status is None or status[1] != "done"
+        start, end = numeric(meta.get("START")), numeric(meta.get("END"))
+        if start is not None and end is not None and end >= start:
+            row["duration"].append(end - start)
+        for field, target in (("TOKENS_IN", "tokens_in"), ("TOKENS_OUT", "tokens_out")):
+            value = numeric(meta.get(field))
+            if value is not None:
+                row[target].append(value)
+    lines = ["| Agent | Model | Effort | Runs | Failures | Median seconds | Median input tokens | Median output tokens |",
+             "|---|---|---|---:|---:|---:|---:|---:|"]
+    for (agent, model, effort), row in sorted(groups.items()):
+        labels = [" ".join(label.split()).replace("|", "\\|") or "unset" for label in (agent, model, effort)]
+        values = labels + [str(row["runs"]), str(row["failures"])] + [median(row[field]) for field in ("duration", "tokens_in", "tokens_out")]
+        lines.append("| " + " | ".join(values) + " |")
+    return "\n".join(lines) if groups else "No readable local run statistics."
+
+
+def facts_text(current, changes, statistics_text, note):
+    lines = [f"# Model review facts — {datetime.now(timezone.utc).date()}", "", "## Model changes", ""]
+    for agent, delta in changes.items():
+        for kind, ids in delta.items():
+            lines.append(f"- {agent.title()} {kind}: {', '.join(ids) if ids else '(none)'}")
+    if note:
+        lines.extend(["", note])
+    for agent in ("codex", "claude"):
+        lines.extend(["", f"## Full current {agent.title()} list", "", "```json", json.dumps(current[agent], indent=2), "```"])
+    lines.extend(["", "## Local run statistics", "", statistics_text, "",
+                  "Failures count EXIT != 0 or a final STATUS other than done (including missing STATUS).", ""])
+    return "\n".join(lines)
+
+
+def research_prompt(facts):
+    return f"""Read these files:
+- {facts}
+- {REPO / 'playbook/models.md'}
+- {REPO / 'playbook/routing.md'}
+
+Research the added/removed models. For each new model, report official capability facts
+with links and publication/access dates, and reputable comparisons from the last 30 days.
+Distinguish measured evidence from inference. Propose an updated models.md section in your
+reply. State whether any routing row should change, with evidence from research and the
+local run statistics. Lead with a top-down summary of at most 10 lines. This is a read-only
+research task: do not modify files, commit, push, or launch other workers.
+"""
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--if-stale", nargs="?", const=3, default=3, type=float, metavar="DAYS",
+                        help="check only after DAYS (default 3); fresh checks exit silently")
+    parser.add_argument("--claude-models", help="comma-separated model ids supplied by the front")
+    parser.add_argument("--force", action="store_true", help="check and start research even without a model change")
+    parser.add_argument("--dry-run", action="store_true", help="update the snapshot and write facts, without starting a worker")
+    args = parser.parse_args()
+    if not math.isfinite(args.if_stale) or args.if_stale < 0:
+        parser.error("DAYS must be finite and nonnegative")
+    root = Path(os.environ.get("AGENT_RUNS_ROOT") or str(Path.home() / ".agent-runs")).resolve()
+    state = root / "model-review"
+    now = time.time()
+    try:
+        last_check = numeric((state / "last-check").read_text().strip())
+        if last_check is None:
+            last_check = (state / "last-check").stat().st_mtime
+    except OSError:
+        last_check = None
+    if not args.force and last_check is not None and now - last_check < args.if_stale * 86400:
+        return
+    state.mkdir(parents=True, exist_ok=True)
+    # Concurrent session fronts share one snapshot; the later check sees no diff.
+    import fcntl
+    with (state / "check.lock").open("w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        previous = load_json(state / "snapshot.json", {})
+        if not isinstance(previous, dict):
+            previous = {}
+        codex, note = current_codex(previous.get("codex", []))
+        claude = (sorted({model.strip() for model in args.claude_models.split(",") if model.strip()})
+                  if args.claude_models is not None else previous.get("claude", []))
+        current = dict(codex=codex, claude=claude)
+        changes = {}
+        for agent in current:
+            before, after = model_ids(previous, agent), model_ids(current, agent)
+            changes[agent] = dict(added=sorted(after - before), removed=sorted(before - after))
+        count = sum(len(ids) for delta in changes.values() for ids in delta.values())
+        atomic_write(state / "snapshot.json", json.dumps(current, indent=2) + "\n")
+        atomic_write(state / "last-check", str(now) + "\n")
+        if not count and not args.force:
+            return
+        directory = state / str(datetime.now(timezone.utc).date())
+        directory.mkdir(exist_ok=True)
+        facts = directory / "facts.md"
+        atomic_write(facts, facts_text(current, changes, run_statistics(root), note))
+        if args.dry_run:
+            return
+        run = Path(tempfile.mkdtemp(prefix=datetime.now().strftime("%Y%m%d-%H%M%S") + "-codex-model-review-", dir=root))
+        prompt = run / "research-prompt.md"
+        prompt.write_text(research_prompt(facts))
+        wrapper = shutil.which("codex-task") or str(REPO / "bin/codex-task")
+        command = [wrapper, "run", "--search", "-n", "model-review", "-t", "sol", "-e", "high", "-s", "ro", "-C", str(REPO)]
+        with prompt.open() as source, (run / "research.log").open("w") as output:
+            worker = subprocess.Popen(command, stdin=source, stdout=output, stderr=subprocess.STDOUT,
+                                      start_new_session=True, env=dict(os.environ, AGENT_RUN_DIR=str(run), AGENT_RUNS_ROOT=str(root)))
+        (run / "launcher.pid").write_text(str(worker.pid) + "\n")
+        print(f"model-review: {count} model change(s); research run {run}")
+
+
+if __name__ == "__main__":
+    main()

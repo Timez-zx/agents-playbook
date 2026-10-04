@@ -17,11 +17,13 @@
 #   -s MODE      ro | rw | full = read-only | workspace-write | danger-full-access (default: ro)
 #   -C DIR       working root (default: $PWD)
 #   --net        allow network access in rw mode
+#   --search     enable live web search (run/resume/review)
 #   --add-dir D  extra writable dir for rw mode (new runs only; repeatable)
 #   --raw        do not append the handoff contract to the prompt
 #
 # Runs live in ${AGENT_RUNS_ROOT:-$HOME/.agent-runs}/<stamp>-codex-<name>/:
 #   prompt.md  events.jsonl  stderr.log  last.md  meta.env  pid  exit_code
+# Read-only reviewers cannot run test suites that write temporary files.
 set -uo pipefail
 
 RUNS_ROOT="${AGENT_RUNS_ROOT:-$HOME/.agent-runs}"
@@ -94,7 +96,7 @@ meta_get() { grep -m1 "^$2=" "$1/meta.env" 2>/dev/null | cut -d= -f2-; }
 # ---------- run / resume / review ----------
 launch() {
   local kind="$1"; shift
-  local name=task tier=sol model="" effort="" sbx=ro cwd="$PWD" net=0 raw=0
+  local name=task tier=sol model="" effort="" sbx=ro cwd="$PWD" net=0 raw=0 search=0
   local prompt="" prompt_file="" have_prompt=0 parent="" thread=""
   local -a add_dirs=() review_target=()
 
@@ -107,6 +109,7 @@ launch() {
     model="$(meta_get "$parent" MODEL)"; effort="$(meta_get "$parent" EFFORT)"
     sbx="$(meta_get "$parent" SANDBOX_SHORT)"; cwd="$(meta_get "$parent" CWD)"
     net="$(meta_get "$parent" NET)"
+    search="$(meta_get "$parent" SEARCH)"; search="${search:-0}"
   fi
 
   while (($#)); do
@@ -120,12 +123,13 @@ launch() {
       -p) prompt="$2"; have_prompt=1; shift 2 ;;
       -f) prompt_file="$2"; have_prompt=1; shift 2 ;;
       --net) net=1; shift ;;
+      --search) search=1; shift ;;
       --raw) raw=1; shift ;;
       --add-dir) add_dirs+=(--add-dir "$2"); shift 2 ;;
       --uncommitted) review_target=(--uncommitted); shift ;;
       --base) review_target=(--base "$2"); shift 2 ;;
       --commit) review_target=(--commit "$2"); shift 2 ;;
-      -h | --help) sed -n '2,24p' "$0"; exit 0 ;;
+      -h | --help) sed -n '2,/^set /{ /^set /!p; }' "$0"; exit 0 ;;
       *) die "unknown option '$1'" ;;
     esac
   done
@@ -166,17 +170,31 @@ launch() {
     if [[ "$kind" == review ]]; then prompt+="$REVIEW_CONTRACT"; else prompt+="$WORK_CONTRACT"; fi
   fi
 
-  mkdir -p "$RUNS_ROOT"
-  local run="$RUNS_ROOT/$(date +%Y%m%d-%H%M%S)-codex-${name//[^A-Za-z0-9._-]/_}"
-  [[ -e "$run" ]] && run="$run-$$"
-  mkdir -p "$run"
+  local value
+  for value in "$name" "$model" "$effort" "$sbx" "$cwd" "$parent" "$thread"; do
+    [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || die "metadata values cannot contain newlines"
+  done
+  mkdir -p "$RUNS_ROOT" || die "cannot create runs root"
+  local run
+  if [[ -n "${AGENT_RUN_DIR:-}" ]]; then
+    run="$AGENT_RUN_DIR"
+    [[ -d "$run" && ! -e "$run/meta.env" && "$run" == "$RUNS_ROOT/"* ]] || die "invalid reserved run directory"
+  else
+    local base="$RUNS_ROOT/$(date +%Y%m%d-%H%M%S)-codex-${name//[^A-Za-z0-9._-]/_}" attempt=0
+    while :; do
+      run="$base"; ((attempt)) && run="$base-$$-$attempt"
+      mkdir -- "$run" 2>/dev/null && break
+      [[ -e "$run" ]] || die "cannot create run directory '$run'"
+      ((attempt+=1))
+    done
+  fi
   printf '%s\n' "$prompt" > "$run/prompt.md"
 
   local start; start="$(date +%s)"
   {
     echo "NAME=$name"; echo "KIND=$kind"; echo "AGENT=codex"; echo "MODEL=$model"; echo "EFFORT=$effort"
     echo "SANDBOX=$sandbox"; echo "SANDBOX_SHORT=$sbx"; echo "NET=$net"; echo "CWD=$cwd"
-    echo "PARENT=$parent"; echo "START=$start"
+    echo "PARENT=$parent"; echo "START=$start"; echo "SEARCH=$search"
   } > "$run/meta.env"
 
   local -a common=(--json --skip-git-repo-check -o "$run/last.md" -m "$model"
@@ -193,18 +211,28 @@ launch() {
       ;;
   esac
 
+  ((search)) && cmd=(codex --search "${cmd[@]:1}")
+
   echo "codex-task: $kind '$name' -> $run ($model/$effort, $sandbox)" >&2
-  (cd "$cwd" && exec env AGENT_ROLE=worker "${cmd[@]}") < "$run/prompt.md" > "$run/events.jsonl" 2> "$run/stderr.log" &
-  local pid=$!
-  echo "$pid" > "$run/pid"
-  wait "$pid"
-  local rc=$?
-  echo "$rc" > "$run/exit_code"
+  python3 "$REPO_ROOT/lib/agent_events.py" worker "$cwd" "${cmd[@]}" < "$run/prompt.md" > "$run/events.jsonl" 2> "$run/stderr.log" &
+  local pid=$! interrupted=0 rc
+  # Keep watch attached through archive finalization.
+  echo "$$" > "$run/pid"
+  trap 'interrupted=130; kill -INT "$pid" 2>/dev/null || true' INT
+  trap 'interrupted=143; kill -TERM "$pid" 2>/dev/null || true' TERM
+  trap 'interrupted=129; kill -HUP "$pid" 2>/dev/null || true' HUP
+  wait "$pid"; rc=$?
+  if ((interrupted)); then wait "$pid"; rc=$interrupted; fi
+  trap '' INT TERM HUP
 
   local end; end="$(date +%s)"
   echo "END=$end" >> "$run/meta.env"
   echo "EXIT=$rc" >> "$run/meta.env"
   summarize "$run/events.jsonl" meta >> "$run/meta.env"
+  [[ -e "$run/last.md" ]] || : > "$run/last.md"
+  printf '%s\n' "$rc" > "$run/exit_code.tmp"
+  mv -- "$run/exit_code.tmp" "$run/exit_code"
+  trap - INT TERM HUP
 
   echo "RUN     $run"
   echo "MODEL   $model/$effort   SANDBOX $sandbox$( ((net)) && echo ' +net')   CWD $cwd"
@@ -237,14 +265,24 @@ peek() {
 watch_run() {
   local run="${1:?usage: codex-task watch RUN_DIR [INTERVAL_S] [STALL_S]}"
   local interval="${2:-120}" stall="${3:-600}"
+  [[ -d "$run" && -f "$run/meta.env" ]] || die "watch: '$run' is not a run directory"
   local start; start="$(meta_get "$run" START)"
+  [[ "$start" =~ ^[0-9]+$ ]] || die "watch: missing or invalid START"
+  local grace=$(( $(date +%s) + 2 ))
   while :; do
     if [[ -f "$run/exit_code" ]]; then
       echo "DONE exit=$(cat "$run/exit_code") $(summarize "$run/events.jsonl" last)"
       return 0
     fi
     local pid; pid="$(cat "$run/pid" 2>/dev/null)"
-    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null && [[ ! -f "$run/exit_code" ]]; then
+    if [[ ! "$pid" =~ ^[1-9][0-9]*$ ]]; then
+      if (( $(date +%s) >= grace )); then
+        echo "DONE exit=unknown (no worker pid) $(summarize "$run/events.jsonl" last)"
+        return 1
+      fi
+      sleep .1
+      continue
+    elif ! kill -0 "$pid" 2>/dev/null && [[ ! -f "$run/exit_code" ]]; then
       sleep 2
       [[ -f "$run/exit_code" ]] && continue
       echo "DONE exit=unknown (process gone, no exit_code) $(summarize "$run/events.jsonl" last)"
@@ -270,7 +308,7 @@ list_runs() {
     printf '%-48s %-7s %-22s exit=%-7s %s\n' "$(basename "$run")" "$(meta_get "$run" KIND)" \
       "$(meta_get "$run" MODEL)/$(meta_get "$run" EFFORT)" "$rc" \
       "$(grep -m1 '^STATUS:' "$run/last.md" 2>/dev/null)"
-  done < <(printf '%s\n' "$RUNS_ROOT"/*-codex-*/ | sort | tail -n "$n")
+  done < <(printf '%s\n' "$RUNS_ROOT"/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]-codex-*/ | sort | tail -n "$n")
 }
 
 case "${1:-}" in
@@ -278,6 +316,6 @@ case "${1:-}" in
   peek) shift; peek "$@" ;;
   watch) shift; watch_run "$@" ;;
   ls) shift; list_runs "$@" ;;
-  -h | --help | "") sed -n '2,24p' "$0" ;;
+  -h | --help | "") sed -n '2,/^set /{ /^set /!p; }' "$0" ;;
   *) die "unknown subcommand '$1' (run|resume|review|peek|watch|ls)" ;;
 esac

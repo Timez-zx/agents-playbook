@@ -2,6 +2,8 @@
 """Integration checks for the public CLI, with fake workers only."""
 import json
 import os
+import shutil
+import signal
 from pathlib import Path
 import subprocess
 import select
@@ -14,7 +16,7 @@ RECORDS = Path(os.environ["FAKE_RECORD_DIR"])
 GUARD = "You are a worker. Do not delegate to other agents and do not run codex-task or claude-task."
 META_KEYS = "NAME KIND AGENT MODEL EFFORT SANDBOX SANDBOX_SHORT NET CWD PARENT START END EXIT THREAD TOKENS_IN TOKENS_CACHED TOKENS_OUT TOKENS_REASONING".split()
 WORK = TEMP / "work tree"
-WORK.mkdir()
+WORK.mkdir(exist_ok=True)
 
 
 def call(*args, stdin=None, env=None, code=0):
@@ -66,7 +68,10 @@ def assert_permissions(argv, mode):
     if mode == "full":
         assert "--settings" not in argv
     else:
-        assert json.loads(flag(argv, "--settings")) == dict(sandbox=dict(enabled=True, autoAllowBashIfSandboxed=True))
+        sandbox = dict(enabled=False) if mode == "ro" else dict(enabled=True, autoAllowBashIfSandboxed=True, failIfUnavailable=True, allowUnsandboxedCommands=False)
+        assert json.loads(flag(argv, "--settings")) == dict(sandbox=sandbox)
+        assert flag(argv, "--setting-sources") == "" and flag(argv, "--permission-prompts") == "none"
+        assert "--strict-mcp-config" in argv and json.loads(flag(argv, "--mcp-config")) == dict(mcpServers={})
 
 
 def test_wrappers():
@@ -333,57 +338,91 @@ def test_quota():
 
 
 def test_install():
+    repo = TEMP / "install-repo"
+    repo.mkdir()
+    shutil.copy(ROOT / "install.sh", repo / "install.sh")
+    shutil.copytree(ROOT / "bin", repo / "bin")
+    shutil.copytree(ROOT / "lib", repo / "lib")
+    for agent in ("claude", "codex"):
+        skill = repo / "skills" / agent / "agents-playbook"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("Offline skill fixture")
+        (skill / "repo").symlink_to("../../..", target_is_directory=True)
     home = Path(os.environ["HOME"])
-    (home / ".codex").mkdir(exist_ok=True)
-    claude_skill = home / ".claude/skills/codex-collab"
+    claude_skill = home / ".claude/skills/agents-playbook"
     claude_skill.mkdir(parents=True)
     (claude_skill / "old.txt").write_text("old skill")
     bin_dir = home / ".local/bin"
     bin_dir.mkdir(parents=True)
     old_binary = bin_dir / "codex-task"
     old_binary.write_text("old binary")
-    call("bash", ROOT / "install.sh")
-    targets = [claude_skill, home / ".codex/skills/claude-collab"] + [bin_dir / name for name in ("codex-task", "claude-task", "agent-quota")]
+    installer = repo / "install.sh"
+    help_text = call("bash", installer, "--help")
+    assert "--with-codex-front" in help_text and "--uninstall" in help_text
+    call("bash", installer)
+    codex_skill = home / ".codex/skills/agents-playbook"
+    assert not codex_skill.exists() and not codex_skill.is_symlink()
+    call("bash", installer, "--with-codex-front")
+    targets = [claude_skill, codex_skill] + [bin_dir / name for name in ("codex-task", "claude-task", "agent-quota", "model-review")]
     for target in targets:
-        assert target.is_symlink() and str(target.readlink()).startswith(str(ROOT) + "/")
-    backups = list(home.rglob("*.bak-*"))
-    assert len(backups) == 2
-    assert next(bin_dir.glob("codex-task.bak-*")).read_text() == "old binary"
-    assert (next(claude_skill.parent.glob("codex-collab.bak-*")) / "old.txt").read_text() == "old skill"
-    call("bash", ROOT / "install.sh")
-    assert set(home.rglob("*.bak-*")) == set(backups)
-    # Installed commands must find their repo helper through the symlink.
+        assert target.is_symlink() and target.exists() and str(target.readlink()).startswith(str(repo) + "/")
+    backup_base = home / ".agent-runs/install-backups"
+    backup_dirs = list(backup_base.iterdir())
+    assert len(backup_dirs) == 1
+    assert (backup_dirs[0] / ".local/bin/codex-task").read_text() == "old binary"
+    assert (backup_dirs[0] / ".claude/skills/agents-playbook/old.txt").read_text() == "old skill"
+    assert not list((home / ".claude/skills").glob("*.bak-*"))
+    call("bash", installer, "--with-codex-front")
+    assert list(backup_base.iterdir()) == backup_dirs
     call(bin_dir / "codex-task", "run", "-n", "installed", "-C", WORK, "-p", "task")
     call(bin_dir / "claude-task", "run", "-n", "installed", "-C", WORK, "-p", "task")
     call(bin_dir / "agent-quota", "--json")
-    outside = TEMP / "unrelated"
-    outside.write_text("keep")
     protected = bin_dir / "claude-task"
     protected.unlink()
-    protected.symlink_to(outside)
-    codex_skill = home / ".codex/skills/claude-collab"
+    protected.symlink_to(repo / "bin/codex-task")  # Same repo, wrong expected source: still foreign.
     codex_skill.unlink()
     codex_skill.mkdir()
     (codex_skill / "keep.txt").write_text("keep regular directory")
-    call("bash", ROOT / "install.sh", "--uninstall")
-    for target in (claude_skill, bin_dir / "codex-task", bin_dir / "agent-quota"):
+    call("bash", installer, "--with-codex-front")
+    assert protected.readlink() == repo / "bin/codex-task"
+    assert (backup_base / next(p.name for p in backup_base.iterdir() if p != backup_dirs[0]) / ".codex/skills/agents-playbook/keep.txt").is_file()
+    call("bash", installer, "--uninstall")
+    for target in (claude_skill, codex_skill, bin_dir / "codex-task", bin_dir / "agent-quota", bin_dir / "model-review"):
         assert not target.exists() and not target.is_symlink()
-    assert protected.is_symlink() and protected.readlink() == outside
-    assert (codex_skill / "keep.txt").is_file() and all(p.exists() for p in backups)
-    call("bash", ROOT / "install.sh", "--uninstall")
-    absent_home = TEMP / "no-codex-home"
-    absent_home.mkdir()
-    call("bash", ROOT / "install.sh", env=dict(HOME=str(absent_home)))
-    assert not (absent_home / ".codex").exists()
-    assert (absent_home / ".claude/skills/codex-collab").is_symlink()
-    call("bash", ROOT / "install.sh", "--uninstall", env=dict(HOME=str(absent_home)))
-    print("PASS: installer links, backups, idempotence, installed commands, and safe uninstall")
+    assert protected.is_symlink() and protected.readlink() == repo / "bin/codex-task"
+    call("bash", installer, "--uninstall")
+    for case in ("missing", "broken"):
+        isolated_home = TEMP / ("installer-" + case)
+        target = isolated_home / ".claude/skills/agents-playbook"
+        target.mkdir(parents=True)
+        (target / "keep.txt").write_text("keep")
+        source = repo / "skills/claude/agents-playbook"
+        if case == "missing":
+            source.rename(source.with_name("saved"))
+        else:
+            (source / "repo").unlink()
+            (source / "repo").symlink_to("../../missing")
+        result = subprocess.run(["bash", str(installer)], env=dict(os.environ, HOME=str(isolated_home)), capture_output=True, text=True)
+        assert result.returncode == 0 and "Warning:" in result.stderr and (target / "keep.txt").is_file()
+        if case == "missing":
+            source.with_name("saved").rename(source)
+    foreign_home = TEMP / "installer-foreign"
+    foreign = foreign_home / ".local/bin/codex-task"
+    foreign.parent.mkdir(parents=True)
+    foreign.symlink_to("/opt/custom/codex-task")
+    call("bash", installer, env=dict(HOME=str(foreign_home)))
+    assert foreign.readlink() == Path("/opt/custom/codex-task")
+    call("bash", installer, "--uninstall", env=dict(HOME=str(foreign_home)))
+    assert foreign.is_symlink()
+    call("bash", installer, "--cron", code=2)
+    print("PASS: installer skill sources/repo links, optional front, external backups, foreign links, and safe uninstall")
 
 
-test_wrappers()
-test_flags()
-test_watch_and_defaults()
-test_parser()
-test_quota()
-test_install()
-print("All offline tests passed.")
+if __name__ == "__main__":
+    test_wrappers()
+    test_flags()
+    test_watch_and_defaults()
+    test_parser()
+    test_quota()
+    test_install()
+    print("All baseline offline tests passed.")
