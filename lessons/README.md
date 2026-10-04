@@ -4,9 +4,9 @@ Record general lessons that a later session can use without the original convers
 
 ## When and who
 
-After every task, check for something surprising: a failure mode, a routing choice that worked or failed with numbers, a tool quirk, or a human preference about output. Write a lesson when there is new evidence; do not force one from routine work. This keeps the collection useful rather than repetitive.
+After delivery of a substantial task, capture a general surprise: a failure mode, a routing choice that worked or failed with numbers, a tool quirk, or a human preference about output. Use one short Writer call in the background and skip capture if nothing general was learned. Small tasks need no lesson, and the human never waits for upkeep; this keeps learning useful without interrupting the real task.
 
-The orchestrator supplies facts, the Writer writes the prose, and the orchestrator checks the facts. This gives the lesson readable English without changing who is responsible for accuracy.
+The front supplies facts, the Writer writes the prose, and the front checks the facts. This gives the lesson readable English without changing who owns the outcome. One incident has one lesson; every profile discussing it cites that same file, and disputes do not produce rebuttal lessons. Follow [AGENTS.md](../AGENTS.md) for accountability and maintenance rules.
 
 ## Filename and template
 
@@ -55,7 +55,7 @@ For `role-evidence`, record a concrete comparison: who found a bug, whose design
 
 ## Publish, promote, and protect privacy
 
-Lessons go straight to main: `git pull --rebase`, commit the new file, and push. Rebase again if concurrent work causes a conflict. Workers do not commit or push; the orchestrator publishes after checking facts. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the exact commands.
+Lessons go straight to main: `git pull --rebase`, commit the new file, and push from this clone. Rebase again if concurrent work causes a conflict. Workers do not commit or push; the front publishes after checking facts. See [AGENTS.md](../AGENTS.md) for exact commands. Retry or drop failed upkeep later; do not touch the project repo or report maintenance trouble as a task failure.
 
 When at least two lessons agree, or one has strong evidence, open a pull request to fold the lesson into the playbook. Mark supporting lessons `promoted` and add a link to the rule. Human approval is required because a promoted rule changes behavior for every user. Mark obsolete lessons `retired` with a reason, so the evidence history remains understandable.
 
@@ -68,3 +68,4 @@ Generalize before publishing. Never include private repo names, paths under a us
 - [Cached input on resumed work](2026-10-04-resume-cache.md)
 - [A separate Writer improves readability](2026-10-04-writer-readability.md)
 - [Machine-readable quotas enable routing](2026-10-04-machine-readable-quotas.md)
+- [User-level skills reach delegated workers](2026-10-04-user-skills-reach-workers.md)

@@ -29,7 +29,7 @@ Check the namespace policy when this exact startup error occurs. An approved bub
 
 Action: Ask the human to approve the AppArmor change before applying it.
 
-After the fix, sandboxed commands had no graphics processing unit (GPU) device access and no network by default. Network access must be enabled per task. `$HOME` was readable. Account for those boundaries when planning experiments, so a successful startup is not mistaken for unrestricted access.
+After the fix, sandboxed commands had no GPU device access and no network by default. Network access must be enabled per task. `$HOME` was readable. Account for those boundaries when planning experiments, so a successful startup is not mistaken for unrestricted access.
 
 ## Evidence
 

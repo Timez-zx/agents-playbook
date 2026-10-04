@@ -60,6 +60,7 @@ Read-only review preserves the evidence being assessed. A concrete failure and t
 codex-task  <run|resume|review|peek|watch|ls> [opts]
 claude-task <run|resume|review|peek|watch|ls> [opts]
 agent-quota [--json]
+agent-quota --codex-line
 
 run    [opts] (-p TEXT | -f FILE | stdin)
 resume RUN_DIR [opts] (-p | -f | stdin)
@@ -72,7 +73,7 @@ ls     [N]
 --net   --add-dir D   --raw
 ```
 
-`codex-task` runs Codex CLI as the worker. `claude-task` runs Claude Code CLI through `claude -p`. `agent-quota` reports both quotas, burn-rate status, and routing advice; `--json` requests machine-readable output. All model and tier mappings are in [routing.md](routing.md).
+`codex-task` runs Codex CLI as the worker. `claude-task` runs Claude Code CLI through `claude -p`. `agent-quota` reports both quotas, burn-rate status, and routing advice; `--json` requests machine-readable output, and `--codex-line` is also supported. All model and tier mappings are in [routing.md](routing.md). Check quotas when delegating, so small tasks avoid unnecessary startup work.
 
 - `run` starts a new task. Supply prompt text with `-p TEXT`, a file with `-f FILE`, or standard input, so the handoff is explicit.
 - `resume RUN_DIR` sends a follow-up in the same worker thread or session. Its `-p` and `-f` take text and a file respectively; retained context makes fixes cheaper.
@@ -98,7 +99,15 @@ agent-quota --json
 
 The same subcommands and options apply to `claude-task`. `WORKTREE` and `RUN_DIR` are placeholders, not new flags. The examples use the spec's working directory and the run directory returned by the tool.
 
-Codex's underlying review command rejects a target flag combined with custom instructions. The workaround describes the target in the prompt and runs a custom review, which returns structured JSON (JavaScript Object Notation) findings. See the [review lesson](../lessons/2026-10-04-review-target-instructions.md); the shared wrapper interface still accepts the target and instruction options above.
+Codex's underlying review command rejects a target flag combined with custom instructions. The workaround describes the target in the prompt and runs a custom review, which returns structured JSON findings. See the [review lesson](../lessons/2026-10-04-review-target-instructions.md); the shared wrapper interface still accepts the target and instruction options above.
+
+## Installation
+
+```text
+install.sh [--with-codex-front] [--uninstall]
+```
+
+The default install supplies the Claude-front skill. `--with-codex-front` installs the experimental, unvalidated Codex-front skill too; a human-approved front switch remains a separate decision. `--uninstall` removes the installation. Backups move outside skill directories into `~/.agent-runs/install-backups/`, so old skills cannot be loaded. Follow [AGENTS.md](../AGENTS.md) for updates and front-switch steps.
 
 ## Run records
 
@@ -125,3 +134,5 @@ END EXIT THREAD TOKENS_IN TOKENS_CACHED TOKENS_OUT TOKENS_REASONING
 ```
 
 Claude adds `COST_USD` and `CLAUDE_UTIL_<WINDOW>` / `CLAUDE_RESETS_<WINDOW>` from `rate_limit_event`. These record cost in US dollars and utilization/reset data for each quota window. Keep raw run records local: prompts, paths, and identifiers may be private. Publish only generalized lesson evidence.
+
+Delegation does not isolate user-level skills and instruction files. They can reinforce or conflict with the contract; see the [worker-skills lesson](../lessons/2026-10-04-user-skills-reach-workers.md). Record a conflict's evidence without treating a tooling interaction as an established agent weakness.

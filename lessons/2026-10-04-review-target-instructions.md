@@ -19,7 +19,7 @@ The command rejected a target flag (`--uncommitted`, `--base`, or `--commit`) co
 cannot be used with '[PROMPT]'
 ```
 
-Describing the target in the prompt and running a custom review avoided the incompatible argument combination. The custom review returned structured JSON (JavaScript Object Notation) findings.
+Describing the target in the prompt and running a custom review avoided the incompatible argument combination. The custom review returned structured JSON findings.
 
 ## Lesson
 

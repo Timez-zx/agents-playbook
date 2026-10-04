@@ -1,77 +1,80 @@
 ---
-name: claude-collab
+name: agents-playbook
 description: >-
-  Use only when the user asks Codex to orchestrate and delegate to Claude.
-  Coordinate Claude workers for non-trivial coding, debugging, and review work;
-  verify results and route human-facing prose through the Writer. Never apply
-  to a worker (AGENT_ROLE=worker or a prompt carrying a handoff contract).
+  Use only when the human has made Codex the front and asks it to orchestrate.
+  Experimental, not validated; coordinate workers and verify outcomes. Never
+  apply to workers (AGENT_ROLE=worker or a prompt carrying a handoff contract).
 ---
 
-# Codex orchestrates; Claude works
+# Codex front (experimental)
 
-## Applicability
+## Applicability and overhead
 
-Inactive until the user asks Codex to orchestrate and delegate to Claude. Then use for non-trivial coding, debugging, and review work. Do not use for workers: `AGENT_ROLE=worker` or a prompt carrying a handoff contract excludes this skill. Workers never delegate or run either task wrapper; one coordinator keeps scope and budget controlled.
+Experimental, not validated; installed only with `"$REPO/install.sh" --with-codex-front`, with REPO resolved from the skill's `repo` link as below. Use only when the human has made Codex the front and asks it to orchestrate. Exclude `AGENT_ROLE=worker` and prompts carrying a handoff contract. Workers never delegate or run either wrapper; one front controls scope and budget.
 
-Act directly for a change below about 30 lines already in context, or when a spec costs more than the work. Persistent human-facing text still gets a Writer pass. See [roles and principles](playbook/roles.md).
+Small questions, edits below about 30 lines, and quick lookups: just do them. No delegation, quota check, Writer call, or lesson. Act directly when the work is already in context or a spec would cost more than the work.
 
 ## Session start
 
-1. Run `agent-quota` (or `agent-quota --json`) to read both quotas and burn-rate advice.
-2. Pick the routing mode below; compare usage with elapsed window time, not raw usage alone.
-3. Confirm the user-selected swap. [playbook/roles.md](playbook/roles.md) is authoritative; the table here is the prepared alternative and must be aligned in the swap PR.
+Read only [repo/STATE.md](repo/STATE.md), one short file. Do not load profiles or the whole playbook at startup. Run `agent-quota` only when a task will be delegated, then select the routing mode below. Open a playbook file only when the current step needs it; bounded overhead keeps the real task first.
 
-| Role | Assignment after user-requested swap |
+For any repo change (lesson, STATE, proposal, promotion, profile, or rule), read [repo/AGENTS.md](repo/AGENTS.md) first and follow it. Its read order applies to repo work, not ordinary session startup.
+
+## Roles
+
+[repo/playbook/roles.md](repo/playbook/roles.md) is authoritative; open it when a role decision needs detail. The front owns the delivered outcome, including defects a worker produced and front verification missed.
+
+| Role | Assignment if Codex becomes front; specialist roles stay as agreed |
 |---|---|
-| Orchestrator | Codex main session, own effort tiers: frame, ideate, route, decide, integrate, talk to user; run long/GPU experiments |
-| Scout | Codex luna or Claude haiku via claude-task, read-only; return cited summaries |
+| Orchestrator (front) | Codex, own tiers below; coordinate, route, integrate, talk to human, run long/GPU experiments; own outcomes |
+| Planner | Claude via claude-task unless reassigned; decomposition and design decisions |
+| Scout | Codex luna or Claude haiku via claude-task, read-only; cited summaries |
 | Ideator | Claude opus via claude-task; divergent proposals and challenges |
-| Executor | Claude sonnet via claude-task, workspace-write; implement and test |
+| Executor | Codex sol, workspace-write; Claude sonnet via claude-task for budget fallback or accepted reassignment |
 | Verifier | Fresh Codex session; astra for critical correctness review |
-| Writer | Claude via claude-task, sonnet for routine prose; all persistent human-facing text |
+| Writer | Codex sol/luna per current evidence; Claude via claude-task only on budget shift or accepted reassignment |
 
-GPU means graphics processing unit. The owner's evidence favors Claude for ideas and Codex for rigor/readability; this alternative Writer assignment needs reassessment after a swap. Delegate large file/log reading and require compressed `file:line` summaries; protect orchestrator context.
+Delegate large file/log reading; require compressed `file:line` summaries to protect front context. Planning may move to another agent without changing the front.
 
 ## Routing
 
-| Own Codex tier | Model / effort or purpose |
+| Own/worker tier | Model / effort or purpose |
 |---|---|
-| luna | `gpt-6-luna`, medium; mechanical work and log summaries |
-| reserve | `gpt-reserve`, medium; cheap agentic coding |
-| sol (default) | `gpt-6.1-sol`, high; implementation/review/writing; xhigh for subtle logic, concurrency, cross-module work |
-| astra | `gpt-6-astra`, xhigh; hardest root cause, critical review, tie-break; max only for tie-break |
-| Claude haiku / sonnet / opus | Scouting / routine subtasks (default worker tier) / ideation and orchestration |
+| Codex luna | `gpt-6-luna`, medium; mechanical work/log summaries |
+| Codex reserve | `gpt-reserve`, medium; cheap agentic coding |
+| Codex sol (default) | `gpt-6.1-sol`, high; implementation/review/writing; xhigh for subtle logic, concurrency, cross-module work |
+| Codex astra | `gpt-6-astra`, xhigh; hardest root cause, critical review, tie-break; max only for tie-break |
+| Claude haiku / sonnet / opus | Scouting / routine subtasks (default worker tier) / ideation and planning |
 
-Use the cheapest plausible tier for yourself and workers; escalate on failure. Critical-path review goes straight to astra. Never use effort `ultra`: it spawns uncontrolled agents. Full tables: [routing.md](playbook/routing.md).
+Cheapest plausible tier, then escalate on failure; critical-path review starts at astra. Never effort `ultra`: it spawns uncontrolled agents. Details: [repo/playbook/routing.md](repo/playbook/routing.md).
 
 | Budget mode | Action |
 |---|---|
-| Both healthy | User-selected roles above |
-| Claude over-burning or >70% used | Codex takes Scout/Writer work too; fewer/cheaper Claude tasks; reserve orchestration for decisions |
-| Codex over-burning or >70% used | Claude sonnet handles routine execution; save Codex for critical verification |
-| Either >90% used | Only critical-path work on that side; tell user |
+| Both healthy | Agreed roles |
+| Claude over-burning or >70% used | Codex also scouts/writes; fewer/cheaper Claude subagents; front coordinates and decides |
+| Codex over-burning or >70% used | Claude sonnet routine execution; preserve Codex critical verification |
+| Either >90% used | Critical-path work only on that side; tell human |
 
-Over-burning means used percent > elapsed percent + 20 percentage points. The >90% rule takes priority; apply each side's restriction if both are constrained. See [budget.md](playbook/budget.md).
+Over-burning: used percent > elapsed percent + 20 percentage points. >90% takes priority; apply each side's restriction. Thresholds are unvalidated; [repo/playbook/budget.md](repo/playbook/budget.md) holds sources and rules.
 
-## Workflow
+## Workflows
 
-1. Feature/fix: spec → Claude Executor in own worktree → Codex intent/design review + fresh Verifier correctness review → Executor fixes via resume → Codex re-runs acceptance → Writer writes PR text.
-2. Ideation: Codex + 2–3 Claude Ideators propose expected effect and cheapest falsifying test → read-only astra checks code feasibility with citations → choose → feature workflow.
-3. Debugging: ranked hypotheses and discriminating log points → Claude Executor adds throttled probes → Codex runs experiment → Verifier quotes supporting logs → next bisection.
-4. Prototype: Codex validates quickly → Claude Executor rewrites readable code under the same tests → verify.
-5. Disagreement: exact disputed claim → fresh astra `-e max` without either side's reasoning, or decisive test → decide; never average positions.
-6. Report: verified terse facts → read-only Claude Writer → Codex checks facts unchanged → user.
+1. Feature/fix: Planner spec → Executor in own worktree → front intent/design + fresh Verifier correctness → fixes via resume → front re-runs acceptance → Writer PR text.
+2. Ideation: Planner/front + 2–3 Ideators, expected effect + cheapest falsifying test → read-only astra code feasibility with citations → Planner chooses → front routes feature work.
+3. Debugging: Planner ranked hypotheses/log points → Executor throttled probes → front experiment → Verifier quotes supporting logs → Planner next bisection.
+4. Prototype: Planner/front validates quickly → Executor readable rewrite under same tests → front verifies.
+5. Disagreement: exact claim → fresh astra `-e max` without either side's reasoning, or decisive test → settle once; never average positions.
+6. Report: front's verified facts → read-only Writer → front checks facts unchanged → human.
 
-Owners and reasons: [patterns.md](playbook/patterns.md). PR means pull request.
+Step owners and reasons: [repo/playbook/patterns.md](repo/playbook/patterns.md).
 
 ## Commands and handoffs
 
-Give every worker Goal / Context / Scope (may change, must not change) / Requirements / Acceptance (exact commands and expected results) / Non-goals. Workers cannot see the conversation. Contracts and run records: [handoff.md](playbook/handoff.md).
-
 ```text
-claude-task <run|resume|review|peek|watch|ls> [opts]
 codex-task  <run|resume|review|peek|watch|ls> [opts]
+claude-task <run|resume|review|peek|watch|ls> [opts]
 agent-quota [--json]
+agent-quota --codex-line
 run    [opts] (-p TEXT | -f FILE | stdin)
 resume RUN_DIR [opts] (-p | -f | stdin)
 review [opts] [--uncommitted | --base BR | --commit SHA] [-p | -f]
@@ -81,30 +84,32 @@ ls     [N]
 -n NAME -t TIER -m MODEL -e EFFORT -s ro|rw|full -C DIR --net --add-dir D --raw
 ```
 
-`run` starts work; `resume` follows up in the same thread/session; `review` is read-only. `-p` takes text; `-f` takes a file. `peek` returns one line per event; `watch` prints HB (heartbeat)/STALL/DONE until completion; `ls` shows recent runs, exit codes, STATUS, and usage. Resume fixes to retain context; measure every run.
+`run` starts work; `resume` retains the thread/session; `review` is read-only. `-p` takes text; `-f` takes a file. `peek`: last N events, one line each. `watch`: HB (heartbeat)/STALL/DONE until completion. `ls`: recent runs, exit codes, STATUS, and usage. Measure every run; resume corrections to retain context/cache.
 
-Use `ro` (read-only) for scouting/review, `rw` (workspace-write) for implementation, and `full` (danger-full-access) only when required. Network is enabled per task with `--net`. Both wrappers export `AGENT_ROLE=worker` and append: “You are a worker. Do not delegate to other agents and do not run codex-task or claude-task.”
+Give Goal / Context / Scope (may change, must not change) / Requirements / Acceptance (exact commands/results) / Non-goals. Workers cannot see the conversation. Use `ro` (read-only) for evidence/review, `rw` (workspace-write) for implementation; `full` means danger-full-access. Enable network per task with `--net`. See [repo/playbook/handoff.md](repo/playbook/handoff.md).
 
-Require readable code, scope discipline, stopping on ambiguity, no commit/push, and bounded final sections: STATUS: done|partial|blocked / CHANGES / VERIFICATION (run and NOT verified) / RISKS. Reviews never edit files; findings require severity, file:line, defect, trigger; otherwise NO FINDINGS.
+Both wrappers export `AGENT_ROLE=worker` and append: “You are a worker. Do not delegate to other agents and do not run codex-task or claude-task.” Require scope discipline, stopping on ambiguity, readable code, no commit/push, and bounded STATUS: done|partial|blocked / CHANGES / VERIFICATION (run + NOT verified) / RISKS. User-level skills also reach workers; account for conflicts without assuming a code-quality failure.
 
-## Verification
+## Verification and writing
 
-- Treat “done” as a claim; verify by test, diff read, or the other model.
-- Assign one verifier per aspect; intent/design and correctness are separate aspects.
-- Resume Executor fixes, then independently re-run acceptance; report anything not verified.
-- Use fresh context for independent correctness review and unprimed tie-breaks.
+Treat “done” as a claim: test, read the diff, or check with the other model. One verifier per aspect; intent/design and correctness differ. Resume fixes, independently re-run acceptance, and state unverified behavior. Reviews never edit; findings require severity, file:line, defect, trigger; otherwise NO FINDINGS.
 
-## Human-facing writing
+Persistent prose gets a Writer pass. Reports >about 15 lines: Codex luna/sol, `-s ro --raw`, verified facts in, fact-check out. Human preference for this full pass is unvalidated. Short replies: conclusion first, one idea per short sentence, concrete facts, separate `Action:` when needed, tables only for comparisons, explain internal labels, match human language; repo prose is English. Define unfamiliar terms for a capable engineer; leave GPU, PR, CLI, JSON, API unexpanded. See [repo/playbook/writing.md](repo/playbook/writing.md).
 
-Send reports longer than about 15 lines through Claude Writer with `-s ro --raw`; choose its tier from routing.md, supply facts, then check they are unchanged. Writer writes or rewrites all persistent human-facing text, including docs, PR descriptions, lessons, and review write-ups.
+## After delivery and repo upkeep
 
-For short direct replies: conclusion first; one idea per short sentence; define or avoid abbreviations; use concrete facts; put required action on a separate `Action:` line; tables only for comparisons; explain internal labels; match the user's language. Repo text is English. See [writing.md](playbook/writing.md).
+Only after the human has the result, capture a general surprise in the background with one short Writer call. Skip if none; the human never waits. Keep upkeep in this repo, never project repos; project work never edits the playbook. Retry later or drop upkeep failures; never call them task failures. Broader playbook improvement needs a human request.
 
-## End of task
+Follow [repo/AGENTS.md](repo/AGENTS.md): front supplies facts → Writer uses [repo/lessons/README.md](repo/lessons/README.md) → front checks facts/privacy. One incident, one lesson; no rebuttal lessons. No private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private-work numbers.
 
-1. Check for a general lesson after every task; write one for surprises, failures, measured routing outcomes, tool quirks, or human preferences.
-2. Supply facts to Writer; use [lesson template](../../../lessons/README.md), unique `lessons/YYYY-MM-DD-<slug>.md`; check facts and privacy before publication.
-3. Never publish private repo names, home paths, emails, hostnames, credentials, account/session identifiers, or unpublished private-work numbers; generalize evidence.
-4. On main, publish only the lesson: `git pull --rebase` → `git add lessons/YYYY-MM-DD-<slug>.md` → `git commit -m "Record lesson about <topic>"` → `git push`; resolve conflicts and rebase again if needed. Workers never publish.
-5. If ≥2 lessons agree or one has strong evidence, propose promotion by PR; mark supporting lessons promoted and link the rule. Skills/scripts/rules/role changes need a branch and human-approved PR under [CONTRIBUTING.md](../../../CONTRIBUTING.md).
-6. Tag concrete comparisons `role-evidence`; prompt the user when evidence consistently favors another orchestrator. A swap updates roles.md and both skills' tables in one PR.
+Replace `<skill-dir>` with the loaded skill directory, not the current project. From its `repo` link derive the clone; filenames below are illustrative:
+
+```sh
+REPO="$(readlink -f "<skill-dir>/repo")"
+git -C "$REPO" pull --rebase
+git -C "$REPO" add -- "$REPO/lessons/YYYY-MM-DD-topic.md"
+git -C "$REPO" commit -m "Record lesson about topic"
+git -C "$REPO" push
+```
+
+Small lessons/STATE updates go to main; workers never publish. Resolve conflicts and rebase again, or defer failed upkeep. ≥2 agreeing lessons or one strong lesson: promotion PR, mark promoted/link rule. Raise front-switch or role proposals in chat when role evidence favors a change; record under [repo/proposals/README.md](repo/proposals/README.md). Roles stay independent of front; human decides. Behavior changes require human-approved PRs under [repo/AGENTS.md](repo/AGENTS.md); [repo/CONTRIBUTING.md](repo/CONTRIBUTING.md) points there.

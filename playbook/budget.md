@@ -1,10 +1,10 @@
 # Budget and efficiency
 
-Read both quotas before choosing a routing mode. Compare usage with elapsed time in the quota window, because the same percentage can mean a comfortable pace or a fast drain. Shift routine work toward the agent with headroom while preserving critical-path capacity.
+Read both quotas when a task will be delegated, then choose a routing mode. Compare usage with elapsed time in the quota window, because the same percentage can mean a comfortable pace or a fast drain. Small tasks skip quota checks; the thresholds below remain unvalidated, as recorded in [STATE.md](../STATE.md).
 
 ## Quota sources
 
-`agent-quota [--json]` reports both quotas, burn-rate status, and routing advice. Machine-readable sources allow routing to use evidence instead of estimates.
+`agent-quota [--json]` reports both quotas, burn-rate status, and routing advice; `agent-quota --codex-line` is also supported. Machine-readable sources allow routing to use evidence instead of estimates.
 
 For Codex, read the newest `sessions/YYYY/MM/DD/rollout-*.jsonl` in the Codex data directory, then its last `"rate_limits"` object. The default data directory is the user's `.codex` directory. Relevant fields are:
 
@@ -46,4 +46,4 @@ The above-90% rule takes priority for that side. If both sides are constrained, 
 6. Assign one verifier per aspect. Intent/design and correctness can have different reviewers; reviewing the same aspect twice needs a reason beyond habit.
 7. Measure every run. Both wrappers record token counts, and `ls` shows usage with run status. Measurements reveal whether a routing choice saved budget or merely moved it.
 
-When the user swaps orchestration direction, preserve these rules and apply the authoritative role assignments. Budget shifts change who does routine work; they do not waive verification or the ban on worker delegation.
+When the human changes fronts, preserve these rules and the authoritative specialist-role assignments unless separately reassigned. Budget shifts change who does routine work; they do not waive front responsibility, verification, or the ban on worker delegation.

@@ -6,7 +6,7 @@ Lead with the result, then give the evidence a reader needs to understand it. Th
 
 - **Conclusion first.** State the outcome before the process, so the reader knows what the details explain.
 - **One idea per sentence; short sentences.** Split causes, changes, and evidence into clear steps, so the reader does not have to unpack a dense paragraph.
-- **Define terms and abbreviations on first use, or avoid them.** Familiar language reduces the chance that an unexplained label hides the meaning.
+- **Calibrate terms and abbreviations to the reader.** Define terms a capable engineer might not know, or avoid them. Leave common abbreviations such as GPU, PR, CLI, JSON, and API unexpanded. This explains unfamiliar concepts without making familiar prose cumbersome.
 - **Prefer concrete facts.** Use numbers, public or generalized file paths, and commands when they help, so claims can be checked. Keep private paths out of public artifacts.
 - **Put required action on a separate, clearly marked line.** Use `Action:` when the reader must do something, so the request does not disappear inside an explanation. Do not invent an action when none is needed.
 - **Use tables only for comparisons.** A table helps compare roles or alternatives; connected prose explains a single line of reasoning more naturally.
@@ -30,6 +30,8 @@ The rewrite states the result, explains the behavior, and separates the reader's
 ## Who writes which text
 
 The Writer writes or rewrites every persistent human-facing artifact: READMEs, docs, pull request descriptions, lessons, review write-ups, and long end-of-task reports. The orchestrator supplies facts and checks that the final prose preserves them. This keeps readability from depending on the coordinator's preferred shorthand.
+
+Small tasks and short direct replies need no Writer handoff. Their overhead would exceed the work, so the front writes directly using the same style rules. After delivery, general lesson prose can use one short background Writer call; the human never waits for upkeep under [AGENTS.md](../AGENTS.md).
 
 For an end-of-task report longer than about 15 lines, use the [report pass](patterns.md): terse facts → read-only Writer → orchestrator fact check → user. For shorter replies, the orchestrator writes directly with the rules above. A handoff should buy better writing, not cost more than the reply itself.
 

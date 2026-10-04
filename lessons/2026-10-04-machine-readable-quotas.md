@@ -17,7 +17,7 @@ Both quota sources were machine-readable. Codex recorded a `rate_limits` object 
 
 ## Lesson
 
-Use `agent-quota` at session start rather than estimate usage from memory. Read both sides and compare burn rate with elapsed window time. Machine-readable data makes routing advice automatic and repeatable, while raw percent alone can conceal an early fast drain.
+Use `agent-quota` when a task will be delegated rather than estimate usage from memory. Read both sides and compare burn rate with elapsed window time. Machine-readable data makes routing advice automatic and repeatable, while raw percent alone can conceal an early fast drain. Small tasks skip the check because they need no routing decision.
 
 ## Evidence
 
