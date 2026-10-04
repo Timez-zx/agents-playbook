@@ -1,63 +1,65 @@
-# Roles and principles
+# Objectives
 
-Assign work by observed strengths and available budget. This file holds the authoritative assignment table; compact skill tables must agree with the accepted assignments. The front owns coordination and outcomes, while specialist roles can stay with any agent when the human switches fronts.
+1. Highest-quality task outcome.
+2. Highest-quality explanation for the human: top-down (conclusion, supporting points, detail), accurate, concise.
+3. Fewest tokens, only after the first two are satisfied. Never trade quality for tokens.
 
-## Current assignment
+Every other rule serves these objectives, in this strict priority order.
+
+## Roles and principles
+
+This is the authoritative assignment table. Skill tables must agree; the front owns outcomes while specialist roles remain independent of the front.
 
 | Role | Does | Current holder |
 |---|---|---|
-| Orchestrator (front) | Frames goals, routes, decides, integrates, verifies delivery, talks to the human, runs long/GPU experiments; owns outcomes | Claude main session, opus |
-| Planner | Decomposes tasks and makes design decisions | Claude, currently also the front |
-| Scout | Gathers context cheaply and returns a summary with `file:line` citations | Claude Explore subagent, haiku; or Codex luna, read-only |
-| Ideator | Offers parallel, divergent proposals and challenges the plan | Claude subagents, opus |
-| Executor | Implements a spec and runs tests | Codex sol, writable sandbox |
-| Verifier | Reviews diffs and checks hypotheses against code or logs | Fresh Codex session; astra for critical work |
-| Writer | Writes or rewrites persistent human-facing text | Codex sol; luna for short, simple work |
+| Orchestrator (front) | Frames, routes, decides, integrates, verifies delivery, talks to human, runs long/GPU experiments; owns outcomes | Claude main session, opus |
+| Planner | Decomposes and makes design decisions | Claude, also the front |
+| Scout | Returns cheap context summaries with `file:line` citations | Claude Explore haiku or Codex luna, read-only |
+| Ideator | Proposes divergent options and challenges plans | Claude subagents, opus |
+| Executor | Implements specs and runs tests | Codex sol high, writable sandbox |
+| Verifier | Checks correctness against code/logs | Fresh Codex sol high; xhigh for critical review; astra only escalation/tie-break |
+| Writer | Writes/rewrites persistent human-facing text | Codex sol high; luna for short, simple work |
 
-Planner can be delegated without changing the front. The front keeps coordination, verification, and the human conversation. Review of intent/design and review of correctness are distinct aspects, with one reviewer for each.
+Planner can move while the front keeps coordination, verification, and conversation. Intent/design and correctness are separate review aspects. Agent evidence and candidates live in the [Claude](../CLAUDE.md) and [Codex](../CODEX.md) profiles.
 
-Capability observations, weaknesses, candidates, and mitigations live in the [Claude profile](../CLAUDE.md) and [Codex profile](../CODEX.md). Budgets differ by user and account, so neither evidence nor headroom should be replaced by a fixed brand preference.
+## P1: Roles follow measured strengths
 
-## Principles and why they matter
+Assign by evidence, not brand. Record found defects, simpler designs, or preferred prose so role changes have a checkable basis.
 
-### P1: Roles follow measured strengths
+## P2: Orchestrator writes for machines; Writer writes for humans
 
-Use evidence rather than brand preference to assign roles. The table is a working hypothesis, not a ranking to defend. Record head-to-head outcomes such as a found bug, simpler design, or text the human preferred, so a reassignment has a checkable basis.
+Worker messages may be terse. Writer handles READMEs, docs, PR text, lessons, review write-ups, and long reports; front checks facts. Small tasks and short replies skip the handoff when it costs more than the work.
 
-### P2: The orchestrator writes for machines; the Writer writes for humans
+## P3: Protect orchestrator context
 
-Orchestrator-to-worker messages may be terse. The Writer writes or rewrites persistent human-facing artifacts: READMEs, docs, PR descriptions, lessons, review write-ups, and long end-of-task reports. This preserves inexpensive coordination while giving readers prose they can follow; the front still checks the facts. Small tasks and short direct replies need no Writer handoff because their coordination cost would exceed the work.
+Delegate raw large files/logs; request compressed, cited summaries. Citations preserve evidence without displacing decisions.
 
-### P3: Protect orchestrator context
+## P4: Cheapest tier that can succeed well
 
-The orchestrator never ingests raw large files or logs. Delegate reading and request compressed summaries with `file:line` citations. Context is the scarcest coordination resource: raw output displaces decisions, while citations keep compressed evidence checkable.
+Use sol high for implementation/writing, sol xhigh for subtle logic/critical review. Astra is only escalation after sol fails or is uncertain, or a tie-break. Cheap tiers suit bounded routine work; savings never override quality. See [routing](routing.md).
 
-### P4: Start with the cheapest plausible tier
+## P5: Trust verified claims
 
-Use the cheapest tier that can plausibly succeed, then escalate when it fails. Critical-path review goes straight to the top tier. This saves tokens on routine work while spending more where a missed defect could invalidate the result.
+Check worker “done” through tests, a diff read, or another model. One verifier per aspect avoids duplicate review. Critical tooling needs both live permission probes and independent code review: they catch different defects. Front owns delivered errors.
 
-### P5: Trust verified claims
+## P6: Route by both budgets
 
-A worker's “done” is a claim. Check it through tests, a diff read, or the other model. Assign one verifier per aspect, because independent checking catches mistakes while duplicate reviews of the same aspect consume budget. The front owns any defect delivered to the human, including the verification miss.
+Check both quotas before delegation and compare burn rate, not only raw usage. [Budget rules](budget.md) preserve headroom; small tasks skip checks.
 
-### P6: Route by both budgets
+## P7: Capture facts; propose rules
 
-Before delegating, read both quotas and shift work toward the side with headroom. Compare burn rate as well as raw usage. This prevents one agent exhausting its window while another remains available; [budget.md](budget.md) defines the thresholds. Small tasks skip quota checks because they need no routing decision.
+After delivery, record general surprises without private data. One incident has one lesson, cited by every relevant profile. Two agreeing lessons or one strong lesson justify proposing a rule; adoption requires human approval and a PR.
 
-### P7: Capture and promote general lessons
+## P8: Non-intrusive by design
 
-After delivery, capture general surprises without private data and promote repeated or strongly evidenced lessons. Use one incident, one lesson, with both profiles citing that record. Later sessions then benefit from the evidence without accumulating competing blame narratives; skip capture when nothing general was learned.
+Small questions, edits below about 30 lines, and quick lookups get done directly, without delegation, quota checks, or lessons. Ordinary startup reads only STATE and runs the Claude skill's silent model-change check; other files open on demand. After delivery, capture a general surprise with one short background Writer call; skip if none. Upkeep stays in this repo, never project repos. Retry/drop failures without delaying the human or calling them task failures.
 
-### P8: Non-intrusive by design
+If normal work reveals a better general collaboration method, front proposes it after delivery in one or two lines with evidence. Human approves → apply through a behavior-change PR. Without approval → lesson only. Facts may be committed directly; anything changing agent behavior needs approval first. The proposal never blocks the task.
 
-The playbook is a general library that serves the session's real task. Small questions, edits below about 30 lines, and quick lookups get done without delegation, quota checks, or lessons. Startup reads only STATE; other files open on demand. After delivery, upkeep uses one short Writer call in the background, stays isolated from project repos, and is skipped without a general lesson. Retry or drop upkeep failures without reporting them as task failures. The human never waits for maintenance, and improving the library becomes a task only when asked, because optional learning must not obstruct the work it supports.
+## Direct work and role changes
 
-## When the orchestrator should do the work
+Work directly when a change below about 30 lines is already in context, or a spec costs more than the work; still verify claims. Larger persistent artifacts get a Writer pass.
 
-Act directly when the change is below about 30 lines and already in context, or when writing a spec would cost more than doing the work. Small tasks need no delegation, quota check, or lesson. Larger persistent artifacts get the Writer pass, and claims still require evidence; avoiding a handoff does not waive verification.
+Front switches and role reassignments need evidence, a chat proposal, a recorded human decision, and a PR under [AGENTS.md](../AGENTS.md). Switching fronts does not exchange roles. Codex front is opt-in and [unvalidated](../STATE.md).
 
-## Front switches and role changes
-
-The front is selected by the tool the human opens and owns the conversation and outcome. A specialist role can move to another agent while the front stays the same. Raise either change in chat, record an evidence-linked proposal, and let the human decide; follow [AGENTS.md](../AGENTS.md) for proposals, PRs, profiles, installation, and STATE updates.
-
-Both wrappers share the CLI, run records, and handoff contract, and prohibit worker delegation. Both entry skills use YAML `name`/`description` front matter followed by Markdown. This shared format and interface support another front without forcing an automatic exchange of specialist roles. Codex front remains experimental and opt-in; check [STATE.md](../STATE.md) before treating a mode as validated.
+Both wrappers share the CLI, records, and contract and prohibit worker delegation. Both skills use YAML `name`/`description` front matter plus Markdown; they exclude `AGENT_ROLE=worker` or a handoff contract.

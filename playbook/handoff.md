@@ -1,95 +1,87 @@
 # Handoffs and command reference
 
-A worker cannot see the conversation, so every handoff must carry the goal, scope, and acceptance criteria. Both wrappers share the interface and contracts below, allowing either agent to be the worker. Workers return bounded evidence; the orchestrator owns integration and verification.
+Workers cannot see the conversation. Supply goal, scope, and acceptance; front owns integration and verification. Both wrappers share this interface and contracts. Tooling is implemented separately; check [STATE](../STATE.md) for validation.
 
 ## Spec template
 
-Copy this structure and replace each placeholder. Keep the spec terse but self-contained so the worker does not have to infer missing requirements.
-
 ```text
-Goal
-  The result to achieve.
-Context
-  Relevant facts, files, and constraints; the worker cannot see the conversation.
-Scope
-  May change: ...
-  Must not change: ...
-Requirements
-  Required behavior and style.
-Acceptance
-  Exact commands and expected results.
-Non-goals
-  Work deliberately excluded.
+Goal: result to achieve
+Context: relevant facts, files, constraints
+Scope: may change / must not change
+Requirements: behavior and style
+Acceptance: exact commands + expected results
+Non-goals: excluded work
 ```
-
-The goal identifies success. Context supplies the facts the conversation would otherwise hide. Scope protects unrelated work. Requirements define the behavior. Acceptance makes “done” testable. Non-goals prevent plausible but unwanted expansion.
 
 ## Shared work contract
 
-Both wrappers append the same work contract. Both also export `AGENT_ROLE=worker` to the worker process. Orchestrator skills do not apply when that variable is set or a prompt carries a handoff contract; this prevents recursive delegation.
+Both wrappers export `AGENT_ROLE=worker` and append:
 
 ```text
 You are a worker. Do not delegate to other agents and do not run codex-task or claude-task.
-Stay inside the specified scope. Stop if the task is ambiguous or blocked; report it rather than guessing.
-Write readable code: clear names, small functions, match the surrounding style,
-and add comments only for non-obvious intent.
+Stay inside the specified scope. Stop if ambiguous or blocked; report rather than guess.
+Write readable code: clear names, small functions, match style; comments only for non-obvious intent.
 Do not commit or push.
 End the final message with these sections:
 STATUS: done|partial|blocked
 CHANGES: each changed file and its purpose
-VERIFICATION: what ran, its results, and what was NOT verified
-RISKS: assumptions, uncertainties, and follow-ups
+VERIFICATION: what ran, results, and what was NOT verified
+RISKS: assumptions, uncertainties, follow-ups
 ```
 
-No delegation keeps routing and budget under one coordinator. Scope and ambiguity rules prevent guesses from becoming unintended changes. Readable code makes review cheaper. Keeping commits and pushes with the orchestrator preserves integration control. The final sections cap the response to information the orchestrator needs, including limits on what “done” means.
+Orchestrator skills exclude `AGENT_ROLE=worker` or prompts carrying a handoff contract. User-level skills/instructions still reach workers; the [observed announcement](../lessons/2026-10-04-user-skills-reach-workers.md) does not establish a code-quality failure.
 
 ## Shared review contract
 
 ```text
 Never modify files.
 Report only defects tied to a concrete failure.
-For each finding, give severity, file:line, defect, and trigger.
-If there are no findings, return NO FINDINGS.
+For each finding: severity, file:line, defect, trigger.
+If none: NO FINDINGS.
 ```
 
-Read-only review preserves the evidence being assessed. A concrete failure and trigger separate defects from preferences. Severity supports prioritization, and `file:line` lets the orchestrator check the claim. “NO FINDINGS” is an explicit result, not proof that every behavior was tested.
+One verifier per aspect. Intent/design and correctness differ; critical tooling also needs live inside/outside write probes. “NO FINDINGS” does not prove every behavior was tested.
 
 ## Exact command interface
 
 ```text
-codex-task  <run|resume|review|peek|watch|ls> [opts]
-claude-task <run|resume|review|peek|watch|ls> [opts]
-agent-quota [--json]
+codex-task  <run|resume|review|peek|watch|ls> [opts]   # Codex CLI worker
+claude-task <run|resume|review|peek|watch|ls> [opts]   # Claude Code (`claude -p`) worker
+agent-quota [--json]                                # both quotas, burn-rate status, routing advice
 agent-quota --codex-line
 
-run    [opts] (-p TEXT | -f FILE | stdin)
-resume RUN_DIR [opts] (-p | -f | stdin)
+run    [opts] (-p TEXT | -f FILE | stdin)            # new task
+resume RUN_DIR [opts] (-p | -f | stdin)             # same worker thread/session
 review [opts] [--uncommitted | --base BR | --commit SHA] [-p | -f]
-peek   RUN_DIR [N]
-watch  RUN_DIR [INTERVAL_S=120] [STALL_S=600]
-ls     [N]
+peek   RUN_DIR [N]                                 # last N events, one line each
+watch  RUN_DIR [INTERVAL_S=120] [STALL_S=600]         # HB / STALL / DONE until run ends
+ls     [N]                                        # recent agent runs, exit code, STATUS
 
 -n NAME   -t TIER   -m MODEL   -e EFFORT   -s ro|rw|full   -C DIR
 --net   --add-dir D   --raw
+codex-task only: --search
+model-review --if-stale [DAYS] [--claude-models ids] [--force] [--dry-run]
+install.sh [--with-codex-front] [--uninstall]
 ```
 
-`codex-task` runs Codex CLI as the worker. `claude-task` runs Claude Code CLI through `claude -p`. `agent-quota` reports both quotas, burn-rate status, and routing advice; `--json` requests machine-readable output, and `--codex-line` is also supported. All model and tier mappings are in [routing.md](routing.md). Check quotas when delegating, so small tasks avoid unnecessary startup work.
+`-p` takes text; `-f` a file, including on resume/review. `review` is read-only; targets are uncommitted changes, base branch (`BR`), or commit (`SHA`). `watch` intervals are seconds; `HB` means heartbeat and `STALL` signals investigation. `ls` and metadata support usage measurement.
 
-- `run` starts a new task. Supply prompt text with `-p TEXT`, a file with `-f FILE`, or standard input, so the handoff is explicit.
-- `resume RUN_DIR` sends a follow-up in the same worker thread or session. Its `-p` and `-f` take text and a file respectively; retained context makes fixes cheaper.
-- `review` runs a read-only review. Choose the uncommitted diff, a base branch (`BR`), or a commit identifier (`SHA`), and optionally supply instructions with `-p` or `-f`. A named target makes the review's scope checkable.
-- `peek RUN_DIR [N]` shows the last N events, one line each. It gives a small view without flooding orchestrator context.
-- `watch RUN_DIR [INTERVAL_S=120] [STALL_S=600]` prints `HB` (heartbeat), `STALL`, or `DONE` lines until the run ends. The interval is in seconds; a heartbeat tracks progress, while a stall is a signal to investigate.
-- `ls [N]` shows recent runs of that agent, including exit code and the worker's `STATUS` line. Run records also support token measurement, so compare usage rather than guess.
+Options select name, tier, model, effort, sandbox, working directory, network, extra directory, and raw output. `--search` enables Codex search for research. [Model catalog](models.md) holds exact tier mappings: Codex luna (`gpt-6-luna`, medium), reserve (`gpt-reserve`, medium), sol (`gpt-6.1-sol`, high; default), astra (`gpt-6-astra`, xhigh); Claude haiku, sonnet (default), opus. [Routing](routing.md) governs selection.
 
-The common options select name (`-n`), tier (`-t`), model (`-m`), effort (`-e`), sandbox (`-s`), and working directory (`-C`). `--net` enables network access for the task; `--add-dir D` adds a directory. The report workflow uses `--raw`. Explicit options make the environment part of the handoff.
+| Agent / tier | Permission boundary |
+|---|---|
+| Codex `ro` | Read-only sandbox for evidence/review |
+| Codex `rw` | Workspace-write sandbox for implementation; network disabled unless `--net` |
+| Claude `ro` | Read-only commands only; no tests. Explicitly disables Bash sandbox, which would allow working-directory writes |
+| Claude `rw` | Sandboxed Bash can write inside working directory; outside writes fail; no network |
+| Either `full` | No restrictions (Codex danger-full-access) |
 
-Sandbox shorthands are `ro` for read-only, `rw` for workspace-write, and `full` for danger-full-access. Use read-only for evidence gathering and reviews, and workspace-write for implementation, so access matches the work. The Ubuntu [sandbox lesson](../lessons/2026-10-04-ubuntu-sandbox.md) explains a startup failure and its approved fix; full access is not a substitute for fixing that policy issue.
+Claude `ro` auto-allows commands such as `git diff`, `git log`, and `grep`; write commands are blocked. Non-interactive `claude -p` cannot answer approvals. Do not enable its Bash sandbox for read-only workers. See the [live sandbox evidence](../lessons/2026-10-04-claude-worker-sandbox.md).
 
 ```sh
 codex-task run -n implement -t sol -s rw -C WORKTREE -f spec.md
 codex-task resume RUN_DIR -f fixes.md
-codex-task review -t astra -s ro --base main -f review.md
+codex-task review -t sol -e xhigh -s ro --base main -f review.md
 codex-task peek RUN_DIR 10
 codex-task watch RUN_DIR 120 600
 codex-task ls 5
@@ -97,42 +89,28 @@ claude-task run -n proposals -t opus -s ro -f ideas.md
 agent-quota --json
 ```
 
-The same subcommands and options apply to `claude-task`. `WORKTREE` and `RUN_DIR` are placeholders, not new flags. The examples use the spec's working directory and the run directory returned by the tool.
+`WORKTREE`/`RUN_DIR` are placeholders. Both wrappers accept the shared subcommands/options. Underlying Codex review rejects target flags plus custom instructions; wrapper custom review describes the target in the prompt and returns structured JSON findings. See the [observed restriction](../lessons/2026-10-04-review-target-instructions.md).
 
-Codex's underlying review command rejects a target flag combined with custom instructions. The workaround describes the target in the prompt and runs a custom review, which returns structured JSON findings. See the [review lesson](../lessons/2026-10-04-review-target-instructions.md); the shared wrapper interface still accepts the target and instruction options above.
+## Installation and model checks
 
-## Installation
+Linux sandbox prerequisites: **bubblewrap and socat**. Claude's Bash sandbox needs both; missing socat silently prevented engagement in live tests, blocking non-read-only commands and tests. Ubuntu AppArmor may also block Codex namespaces; the [policy fix](../lessons/2026-10-04-ubuntu-sandbox.md) requires human approval.
 
-```text
-install.sh [--with-codex-front] [--uninstall]
-```
+Default install supplies Claude-front skill; `--with-codex-front` adds the opt-in, unvalidated Codex-front skill. Human decides front separately. `--uninstall` removes installation; backups live outside skill directories in `~/.agent-runs/install-backups/` and must never be loaded.
 
-The default install supplies the Claude-front skill. `--with-codex-front` installs the experimental, unvalidated Codex-front skill too; a human-approved front switch remains a separate decision. `--uninstall` removes the installation. Backups move outside skill directories into `~/.agent-runs/install-backups/`, so old skills cannot be loaded. Follow [AGENTS.md](../AGENTS.md) for updates and front-switch steps.
+`model-review --if-stale 3 --claude-models "<Claude model ids known from system context>"` is the Claude-startup check. It is free/silent when lists are unchanged; only changed lists start one background Codex sol `--search` research run. Read completed results, update [catalog facts](models.md) directly, mention briefly, and propose routing changes under [AGENTS.md](../AGENTS.md). This is event-driven research, not a schedule.
 
 ## Run records
 
-Both wrappers use this directory layout:
-
 ```text
 ${AGENT_RUNS_ROOT:-$HOME/.agent-runs}/<YYYYmmdd-HHMMSS>-<codex|claude>-<name>/
-  prompt.md
-  events.jsonl
-  stderr.log
-  last.md
-  meta.env
-  pid
-  exit_code
+  prompt.md events.jsonl stderr.log last.md meta.env pid exit_code
 ```
 
-The path is a configurable template. `prompt.md` holds the handoff, `events.jsonl` holds newline-delimited JSON events, `stderr.log` holds diagnostics, and `last.md` holds the last worker message. The process identifier (`pid`), exit code, and metadata make the run inspectable without rereading everything.
-
-Both agents' `meta.env` keys are:
+The prompt, newline-delimited events, diagnostics, final message, metadata, process ID, and exit code allow bounded inspection. Both agents' `meta.env` keys:
 
 ```text
 NAME KIND AGENT MODEL EFFORT SANDBOX SANDBOX_SHORT NET CWD PARENT START
 END EXIT THREAD TOKENS_IN TOKENS_CACHED TOKENS_OUT TOKENS_REASONING
 ```
 
-Claude adds `COST_USD` and `CLAUDE_UTIL_<WINDOW>` / `CLAUDE_RESETS_<WINDOW>` from `rate_limit_event`. These record cost in US dollars and utilization/reset data for each quota window. Keep raw run records local: prompts, paths, and identifiers may be private. Publish only generalized lesson evidence.
-
-Delegation does not isolate user-level skills and instruction files. They can reinforce or conflict with the contract; see the [worker-skills lesson](../lessons/2026-10-04-user-skills-reach-workers.md). Record a conflict's evidence without treating a tooling interaction as an established agent weakness.
+Claude adds `COST_USD` and `CLAUDE_UTIL_<WINDOW>` / `CLAUDE_RESETS_<WINDOW>` from `rate_limit_event`. Keep raw records local: prompts, paths, IDs, and account data may be private. Publish only generalized evidence.

@@ -1,108 +1,76 @@
-# How agents-playbook runs
+# Objectives
 
-This is the single source of truth for operating, updating, and improving this repo. The design is agent-agnostic: today's main pair is Claude Code + Codex CLI because the owner currently considers them the strongest, but more agents will appear. Add an agent with a `<agent>-task` wrapper using the shared interface, an `<AGENT>.md` profile, and rows in [routing.md](playbook/routing.md).
+1. Highest-quality task outcome.
+2. Highest-quality explanation for the human: top-down (conclusion, supporting points, detail), accurate, concise.
+3. Fewest tokens, only after the first two are satisfied. Never trade quality for tokens.
 
-## Read order
+Every other rule serves these objectives, in this strict priority order.
 
-For an agent arriving to work on this repo, read in this order:
+## How agents-playbook runs
 
-1. `AGENTS.md`: operating and maintenance rules, so changes follow one policy.
-2. [STATE.md](STATE.md): current front, validation status, and proposals, so an experiment is not mistaken for a proven mode.
-3. The profile of each agent you will work with: [CLAUDE.md](CLAUDE.md), [CODEX.md](CODEX.md), or the added agent's profile. Evidence and mitigations explain the current assignments.
-4. [playbook/roles.md](playbook/roles.md): authoritative assignments, so routing uses the agreed roles.
-5. Lessons with `status: new` in [lessons/](lessons/README.md): recent evidence that may not yet be a rule.
-6. Open files in [proposals/](proposals/README.md): pending trials and decisions, so sessions do not duplicate or contradict them.
+This is the operating policy for a reusable, agent-agnostic collaboration library. Today's pair is Claude Code + Codex CLI, which the owner currently considers strongest. Add an agent with a shared-interface `<agent>-task` wrapper, an `<AGENT>.md` profile, and routing rows plus catalog facts.
 
-This is the read order for repo work, not a preload list for every project task. During an ordinary installed-skill session, read only `repo/STATE.md` at startup and open other documents when the current step needs them. Bounded reading keeps the playbook out of the real task's way.
+The **front** is the agent the human talks to, selected by the tool they open. It is the Orchestrator and owns coordination, integration, verification, and outcomes. Planner owns decomposition and design; Scout, Ideator, Executor, Verifier, and Writer are specialist roles. Any agent can hold a role; switching fronts does not exchange assignments. Claude currently holds front and Planner.
 
-## Non-intrusive by design
+The loop is **use → record facts → propose with evidence → human approves → apply through a PR**. Lessons record facts, not behavior changes. Symlinked installation makes approved updates available next session without re-setup.
 
-The playbook serves the task. Small questions, edits below about 30 lines, and quick lookups just get done: no delegation, quota check, or lesson. Their coordination cost would exceed the benefit.
+[STATE.md](STATE.md) tracks validation and proposals; [roles.md](playbook/roles.md) assigns roles; [routing.md](playbook/routing.md) routes work; [models.md](playbook/models.md) records model facts. Profiles hold agent evidence; [lessons](lessons/README.md) record incidents; [proposals](proposals/README.md) record front/role decisions.
 
-At session start, read only the short STATE file. Run `agent-quota` only when a task will be delegated. Never load the whole playbook up front; open a file only for the step at hand, so coordination does not consume the session.
+## Reading and task overhead
 
-Upkeep happens after delivery. Once the human has the result, use one short Writer call in the background to capture a general surprise; skip it if nothing general was learned. The human never waits for playbook upkeep because the session exists to complete their task.
+For repo work, read in order: this file → STATE → profiles of agents involved ([Claude](CLAUDE.md), [Codex](CODEX.md)) → roles → lessons with `status: new` → open proposals.
 
-Keep upkeep in this repo. It never touches the human's project repos, and project-task work never edits the playbook. Retry a maintenance failure later or drop it; a git conflict or network failure in upkeep is never reported as a failure of the delivered task. Isolation keeps optional learning from disrupting real work.
+For ordinary installed-skill sessions, read only `repo/STATE.md` at startup; open other documents as needed. The Claude skill also runs the silent model-change check described below. Never preload the whole playbook.
 
-Improving the playbook itself becomes a task only when the human asks for it. Routine lesson capture does not authorize a broader redesign.
+Small questions, edits below about 30 lines, and quick lookups get done directly: no delegation, quota check, or lesson. Also act directly when writing a spec would cost more than the work. Run `agent-quota` only before delegation.
 
-## Iteration loop
+After delivery, use one short background Writer call for a general surprise; skip it if none. The front supplies facts and checks prose and privacy. Upkeep stays in this repo, never the human's project repos; project-task work does not edit the playbook. Retry or drop maintenance failures without delaying the human or reporting them as task failures.
 
-1. **Use:** Apply the playbook on real tasks. Real outcomes supply stronger evidence than speculative rules.
-2. **Record:** After delivery, write one lesson per general surprise. Separate incidents stay traceable, and ordinary small tasks need no upkeep.
-3. **Promote:** When at least two lessons agree, or one has strong evidence, open a PR folding the lesson into the playbook. This threshold keeps a local accident from becoming a universal rule.
-4. **Approve:** The human approves behavior changes. Public instructions affect every user who installs them.
-5. **Live:** Installation uses symlinks; the next session loads the updated clone without re-setup. Keep the clone fixed so those links remain valid.
+When normal collaboration reveals a better **general** way to work, the front proposes it after the task result, in one or two lines with evidence. This never blocks the task. Human approval authorizes applying the change through a behavior-change PR; without approval, retain only the lesson. Routine capture does not authorize redesign.
 
-## Front and specialist roles
+## Evidence and accountability
 
-The **front** is the agent the human is talking to, selected by which tool the human opens. The front is the Orchestrator: it talks to the human, routes work, integrates results, and owns outcomes. A front switch requires a proposal and human decision; the human then talks to the other agent, which continues iterating from this repo.
+The owner requires agents not to keep shifting blame ("不能反复推锅"):
 
-The specialist **roles** are Planner, Scout, Ideator, Executor, Verifier, and Writer. Any agent can hold any role, regardless of the front. Reassigning a role changes [roles.md](playbook/roles.md) through a PR; switching fronts does not automatically exchange all assignments.
+1. **Front owns the outcome.** A delivered defect is also a front verification miss, whichever worker produced it.
+2. **Fix the process.** Classify causes as spec/handoff, execution, verification, tooling, or environment; fix the contract, test, template, or tool.
+3. **One incident, one lesson.** Profiles cite the same record; no rebuttal lessons. Settle disputes once by a fresh [tie-break](playbook/patterns.md) or the human. Reopen only with new evidence.
+4. **Weakness threshold.** Require two independent incidents or an explicit human statement. Single incidents remain lessons.
+5. **Self-report first.** Disclosure counts in the agent's favor. Workers return facts rather than editing the playbook outside scope.
+6. **Evidence only.** Profile claims link their own lesson or quote the human. Either agent may edit profiles only by adding/removing evidence-linked claims; unsupported opinions cannot change assignments.
 
-Planner owns decomposition and design decisions. Today the front, Claude, also holds Planner. If evidence favors another planner, the front delegates planning while keeping coordination, verification, and the human conversation. This lets a better plan improve the work without forcing a conversation switch.
+Profiles contain Strengths, Weaknesses, Roles held now, Candidates, Mitigations in force, and claim-specific evidence links. Candidates name alternatives for each held specialist role and deciding evidence, not established advantages. Environment/tooling quirks belong in Operating notes. Profile changes need PRs.
 
-Raise a front-switch or role-reassignment proposal in chat when role evidence favors it. Evidence informs the proposal; the human decides, so neither agent can promote itself through an unsupported comparison.
+## Status and model facts
 
-## STATE.md
+Update STATE when validation, proposals, or the front changes. Separate observations from expectations; a `trial` remains open until the human resolves it. Small status updates go directly to main and do not authorize behavior changes.
 
-[STATE.md](STATE.md) is a short record of the current front, validated and partially validated modes, unvalidated modes, open proposals, and the last update date. Keep observations separate from expectations so later sessions know which paths have live evidence.
+Model capability checks are event-driven, not scheduled research. At Claude-front startup run `model-review --if-stale 3 --claude-models "<Claude model ids known from system context>"`. An unchanged model list is free and silent; a changed list starts one background Codex sol `--search` research run. Read its result when finished, update model facts in [models.md](playbook/models.md) directly, and mention the update in one line at a natural point. Propose routing changes separately; they need human approval.
 
-Update it in any session that changes a mode's validated status, opens or closes a proposal, or changes the front. Small STATE updates go directly to main like lessons because they record status; they do not authorize a behavior change. A decision marked `trial` stays open until the human resolves it.
+## Front and role decisions
 
-## Proposals and decisions
+When role evidence favors a front switch or reassignment, raise a short proposal in chat after delivery. Record it in a unique `proposals/YYYY-MM-DD-<slug>.md` using the [template](proposals/README.md): Proposal, Evidence (lesson links/dated owner quotes), Expected benefit, Risks, Trial plan, Decision (`accepted`, `rejected`, or `trial`, with date). Only the human fills the decision; silence is not approval.
 
-Use `proposals/YYYY-MM-DD-<slug>.md` for front switches and role reassignments. Raise the proposal in chat with the human first; the file records that discussion. Give it a unique slug so concurrent sessions do not share a draft.
+A better Planner can be delegated while the front retains coordination, verification, and the human conversation. Reassignment changes roles through a PR; neither agent promotes itself.
 
-Use the [proposal template](proposals/README.md) with these sections:
+After an accepted front switch:
 
-- **Proposal:** The exact front or role change, so the decision has a bounded scope.
-- **Evidence:** Links to lessons and quoted owner statements, so claims can be checked.
-- **Expected benefit:** The outcome the change should improve, so a trial has a purpose.
-- **Risks:** Costs and uncertainties, so acceptance does not imply certainty.
-- **Trial plan:** A small, reversible test, so the comparison does not require a permanent switch.
-- **Decision:** Filled by the human with `accepted`, `rejected`, or `trial`, and a date, so agents do not infer approval from silence.
+1. Update roles and both profiles; align both skills' compact tables if specialist assignments changed.
+2. Run `./install.sh --with-codex-front`; installation enables the opt-in entry, not a conversation switch.
+3. Update STATE with the front and decision; keep untested modes unvalidated.
+4. The human starts talking to the new front, which owns the next task.
 
-After the human accepts a front switch:
+Roles, profiles, skills, and proposal records still follow the behavior-change PR process; a decision does not bypass implementation review.
 
-1. Update roles.md and both profile files to reflect the accepted front and assignments. Align both skills' compact role tables if assignments changed, so installed instructions agree.
-2. Run `./install.sh --with-codex-front` to install the opt-in Codex-side skill. Installation makes the entry available; it does not itself change who the human talks to.
-3. Update STATE.md with the front and proposal decision. Preserve unvalidated status until a mode has actually been tested.
-4. The human starts talking to the new front. The new front owns the next task and continues using this repo's evidence.
+## Installation and publication
 
-Changes to roles, profiles, and skills follow the behavior-change PR process below. A proposal records a decision; it does not bypass review of the implementation.
+Keep a fixed clone (default `~/agents-playbook`) so installed symlinks remain valid. Interface: `install.sh [--with-codex-front] [--uninstall]`. Codex front is opt-in and unvalidated. Backups go to `~/.agent-runs/install-backups/`, outside skill directories; never load backed-up skills. Linux sandbox prerequisites are bubblewrap and socat; see [install notes](playbook/handoff.md).
 
-## Profiles and accountability
+Repo text and commit messages are English; conversation matches the human's language. The Writer writes/rewrites persistent human-facing text; the front supplies facts and checks it before publication. Workers never commit or push.
 
-Profiles contain Strengths, Weaknesses, Roles held now, Candidates, Mitigations in force, and Evidence links. Candidate entries name a possible alternative for each held specialist role and the evidence that would decide the comparison. Keep environment and tooling quirks in Operating notes, not agent weaknesses, so the profile describes the agent rather than a machine's restrictions.
+### Facts: small direct commits to main
 
-The owner requires agents not to keep shifting blame onto each other ("不能反复推锅"). Apply these firm rules:
-
-1. **The front owns the outcome.** Anything delivered to the human is the front's responsibility, whichever worker produced it. A defect that reaches the human is also a front verification miss. One accountable coordinator prevents responsibility from disappearing between agents.
-2. **Fix the process, not the agent.** Classify the root cause as spec/handoff, execution, verification, tooling, or environment. Change the template, contract, test, or tool that let it through. A process fix prevents recurrence; a label about an agent does not.
-3. **One incident, one lesson.** Record it once; every profile discussing it cites that same lesson. No rebuttal lessons. Settle a dispute once through a fresh tie-break session in [patterns.md](playbook/patterns.md), or by the human. The outcome stands unless new evidence appears, so competing narratives do not become an endless blame loop.
-4. **Weaknesses need evidence above a threshold.** Require at least two independent incidents or an explicit human statement. Single incidents stay in lessons only. This prevents one failure from becoming a permanent reputation.
-5. **Self-report first.** The agent that finds its own error records it; this counts in its favor. Workers supply the facts through their result rather than edit the playbook outside their scope. Rewarding disclosure makes errors easier to find and fix.
-6. **Evidence only.** Every profile claim links a lesson or quotes the human. Either agent may edit any profile only by adding or removing evidence-linked claims. Unsupported opinions cannot change an assignment or profile.
-
-Profile changes use PRs because they can affect routing. A candidate is a testable possibility, not an established capability claim.
-
-## Git, PRs, and publication
-
-Keep one fixed local clone; the default is `~/agents-playbook`. Symlinked installation makes edits live, so later sessions can load a change without reinstalling. The installer interface is `install.sh [--with-codex-front] [--uninstall]`; the Codex-front skill is opt-in because that mode is not validated.
-
-Install backups are moved outside skill directories into `~/.agent-runs/install-backups/`. A backed-up skill must never be loaded, because it may contain obsolete instructions.
-
-Write all repo text and commit messages in English so contributors and agents share one language. In conversation, match the human's language. The Writer writes or rewrites persistent human-facing text; the front supplies facts and checks the prose before publication.
-
-### Lessons and STATE: small direct commits to main
-
-After delivery, capture a lesson for a surprising failure, measured routing choice, tool quirk, or human output preference. Use one unique `lessons/YYYY-MM-DD-<slug>.md` file per incident and the [lesson template](lessons/README.md). The front supplies facts, the Writer writes, and the front checks facts and privacy. The split preserves readability without shifting responsibility.
-
-Use `role-evidence` for concrete comparisons: who found a bug, whose design was simpler, or whose text the human preferred. Record a preference as evidence from this user, not a universal brand ranking.
-
-From the playbook clone on main, replace the illustrative filename and topic below:
+Lessons, small STATE updates, and model-catalog facts may go directly to main after fact/privacy checks. Use unique lesson names and `role-evidence` for measured comparisons or this owner's preferences, not universal rankings. Replace illustrative names below:
 
 ```sh
 git pull --rebase
@@ -111,13 +79,11 @@ git commit -m "Record lesson about topic"
 git push
 ```
 
-Use the same sequence with `git add STATE.md` for a small status update. Resolve a conflict, rebase again, and retry a rejected push when appropriate. Unique lesson names reduce collisions; rebasing preserves concurrent work. If background upkeep fails, retry later or drop it without making the human wait.
+Use `git add STATE.md` or `git add playbook/models.md` for those facts. Resolve conflicts, rebase again, and retry rejected pushes when appropriate; defer or drop failed background upkeep.
 
-Workers never commit or push. The front owns publication after checking facts and privacy, so a worker cannot accidentally publish raw session material.
+### Behavior: approval, branch, and PR
 
-### Behavior changes: branch and PR
-
-Use a branch and PR for skills, scripts, playbook rules, role assignments, profiles, and their proposal records. The human approves merges because these changes affect shared behavior. Replace the branch and file placeholders before running:
+Anything changing how agents work requires human approval first: skills, scripts, playbook rules, roles, profiles, and their proposal records. Then prepare a branch/PR; the human approves merging shared behavior. Replace placeholders:
 
 ```sh
 git pull --rebase
@@ -127,21 +93,13 @@ git commit -m "Describe the behavior change"
 git push -u origin change-branch
 ```
 
-Open a PR describing the concrete problem, resulting behavior, and validation. The Writer writes its title and description; the front checks facts. Review text should let a human assess the change without reconstructing a session.
+PR text states the problem, resulting behavior, and validation; Writer drafts, front checks. Two agreeing lessons or one strongly evidenced lesson justify a promotion proposal, not automatic adoption. After approval, fold the rule into a PR, mark supporting lessons `promoted`, and link the rule. Retire obsolete lessons with a reason; preserve history.
 
-Promote when at least two lessons agree or one has strong evidence. Fold the rule into the playbook through a PR, mark supporting lessons `status: promoted`, and link to the adopted rule. This makes the rule's basis traceable. Mark obsolete lessons `retired` with a reason, rather than discard the evidence history.
+### Privacy and review
 
-### Privacy before publication
+Generalize lessons, proposals, profiles, examples, commands, and logs. Never publish private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private-work numbers. Generic install paths and variable templates are public configuration examples. Use placeholders/safe excerpts; numbers need public evidence or publication clearance.
 
-Generalize every lesson, proposal, profile, and example. Never publish private repo names, paths under a user's home, emails, hostnames, credentials, account IDs, session IDs, or unpublished numbers from private work. The generic installation paths and variable templates in these docs are public configuration examples, not private user paths.
-
-Use placeholders and safe excerpts. Include numbers only when supplied as public lesson evidence or cleared for publication. Check command output and logs as well as prose, because the evidence can identify private work even when the conclusion does not.
-
-### Review checklist
-
-- Follow [writing.md](playbook/writing.md), so readers can understand the change.
-- Resolve relative Markdown links and both skill `repo` symlinks, so installed instructions reach the clone rather than the install directory.
-- Route every skill link through `repo/...`; use `git -C "$REPO"` for skill maintenance commands. The install directory is a symlink and must not determine repository paths.
-- Keep the Claude skill within 120 lines and the Codex skill within about 130, so repeated session loading stays cheap.
-- Validate affected behavior with exact commands and expected results, so “done” remains checkable.
-- Review the diff for scope and privacy, so unrelated work and private data stay out of the public repo.
+- Follow [writing.md](playbook/writing.md); check scope and privacy in the diff.
+- Resolve relative Markdown links and both skill `repo` symlinks. Skill links use `repo/...`; maintenance uses `git -C "$REPO"`, with REPO derived from that link rather than the project/install directory.
+- Keep AGENTS ≤120 lines, README ≤90, profiles ≤40 each, Claude skill ≤110, Codex skill ≤120. Accuracy beats brevity; shorten words, never drop rules.
+- Validate affected behavior with exact commands and expected results. Offline fake-binary tests cannot replace live permission probes inside/outside the working directory; critical tooling also gets independent code review.

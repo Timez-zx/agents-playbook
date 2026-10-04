@@ -9,32 +9,30 @@ agents: ["Claude Code orchestrator (tier not recorded)", "Codex CLI worker (tier
 
 ## Context
 
-The first session used Ubuntu 24.04 with `kernel.apparmor_restrict_unprivileged_userns=1`. Codex's bubblewrap sandbox needed a user namespace, an isolated operating-system environment controlled by that security setting.
+Ubuntu 24.04 had `kernel.apparmor_restrict_unprivileged_userns=1`. Bubblewrap needed a user namespace, an isolated OS environment restricted by that setting.
 
 ## What happened
 
-Every command failed in both read-only and workspace-write sandboxes. Only danger-full-access worked. The failure message was:
+Every command failed in read-only and workspace-write; only danger-full-access worked:
 
 ```text
 bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
 ```
 
-The fix was to install bubblewrap, add an AppArmor profile for `/usr/bin/bwrap` granting `userns` with `flags=(unconfined)`, and load that profile with `apparmor_parser -r`. AppArmor is a Linux security system that restricts what a process may do.
-
-Claude Code's auto-mode classifier blocked the agent from applying that fix unasked. The change relaxes a security policy and needs human approval.
+The fix installed bubblewrap, added an AppArmor profile for `/usr/bin/bwrap` granting `userns` with `flags=(unconfined)`, and loaded it with `apparmor_parser -r`. AppArmor restricts process access. Claude Code's auto-mode classifier blocked the unapproved policy change.
 
 ## Lesson
 
-Check the namespace policy when this exact startup error occurs. An approved bubblewrap profile can restore the sandbox without using full access for every task. Do not apply the policy change without the human's approval, because it changes a system security restriction.
+Check namespace policy for this exact error. A human-approved profile can restore the sandbox; full access is not a routine substitute. The change relaxes security policy.
 
-Action: Ask the human to approve the AppArmor change before applying it.
+Action: Obtain human approval before changing AppArmor policy.
 
-After the fix, sandboxed commands had no GPU device access and no network by default. Network access must be enabled per task. `$HOME` was readable. Account for those boundaries when planning experiments, so a successful startup is not mistaken for unrestricted access.
+After the fix, sandboxed commands had no GPU access, no network by default, and readable `$HOME`. Enable network per task; startup success does not imply unrestricted access. Current Linux prerequisites for both workers are bubblewrap and socat; see [install notes](../playbook/handoff.md).
 
 ## Evidence
 
-The session observed the same `bwrap` error in read-only and workspace-write modes, success in danger-full-access, and sandbox startup after the profile fix. The recorded policy value was `1`. These are observations from that Ubuntu 24.04 setup, not a claim about every installation.
+The session recorded policy value `1`, the error in both sandbox modes, full-access success, and sandbox startup after the profile fix. These are observations from that setup, not all installations.
 
 ## Applies when
 
-Codex on Ubuntu 24.04 fails with the quoted bubblewrap error while unprivileged user namespaces are restricted. Review the local policy before applying this environment-specific fix.
+Codex on Ubuntu 24.04 shows this error with restricted unprivileged user namespaces. Review local policy first.

@@ -1,61 +1,61 @@
 # Collaboration patterns
 
-Pick the workflow that answers the task's main uncertainty. Planner owns design and decomposition; the front owns routing, integration, verification, and delivery even when another agent plans. Small tasks bypass these workflows because their coordination cost exceeds the benefit.
+Choose the workflow for the task's uncertainty. Planner owns design; front owns routing, integration, verification, and delivery. Small tasks bypass coordination overhead. Apply [routing defaults](routing.md): sol high for implementation/writing, sol xhigh for subtle logic/critical review, astra only escalation after sol failure/uncertainty or tie-breaks.
 
 ## W1: Spec → build → two-sided review
 
-Use this as the default for features and fixes. Separate review of intent from review of correctness, so each aspect has one owner.
+Default for features/fixes; intent/design and correctness each have one reviewer.
 
-1. **Planner:** Design and decompose the change; **Orchestrator:** turn it into a handoff using [handoff.md](handoff.md). Exact scope and acceptance commands let a worker succeed without seeing the conversation.
-2. **Executor:** Implement in its own worktree and run the specified tests. Isolation prevents concurrent edits from mixing.
-3. **Orchestrator:** Review intent and design fit. The coordinator knows the user goal and integration constraints.
-4. **Fresh Verifier:** Review correctness in a new session. Fresh context reduces reliance on the Executor's assumptions; do not duplicate the intent review.
-5. **Executor:** Fix findings through `resume` of the same thread. This retains context and benefits from cached input.
-6. **Orchestrator:** Re-run acceptance. A worker's successful report still needs independent confirmation.
-7. **Writer:** Write the pull request text; **Orchestrator:** check its facts. Reviewers need readable prose that preserves the verified result.
+1. Planner designs; front creates a self-contained [handoff](handoff.md) with scope and acceptance commands.
+2. Executor (sol high, xhigh for subtle logic) implements in its own worktree and runs tests.
+3. Front reviews intent and design fit.
+4. Fresh Verifier reviews correctness: sol high normally, sol xhigh for critical review; astra only after sol fails/is uncertain. Critical tooling also gets live permission probes inside/outside the working directory; code review and probes catch different defects.
+5. Executor resumes short fixes in the same thread; large revision rounds get a fresh session and precise spec.
+6. Front re-runs acceptance rather than rely on the worker's claim.
+7. Writer (sol high) writes PR text; front checks facts.
 
 ## W2: Diverge → filter → converge
 
-Use this when the plan itself is uncertain. Generate alternatives before committing implementation budget.
+Use when the plan is uncertain; reject weak ideas before implementation.
 
-1. **Planner/front and two or three Ideators:** Propose candidates from different angles. Each proposal includes its expected effect and cheapest falsifying test, so ideas can be rejected cheaply.
-2. **Verifier:** Use read-only astra to check feasibility against real code, citing `file:line`. Code evidence filters attractive proposals that cannot work.
-3. **Planner:** Pick a candidate; **Orchestrator:** route the spec/build workflow above. One explicit design decision avoids implementing incompatible plans while keeping delivery with the front.
+1. Planner/front and two or three Ideators propose different candidates, each with expected effect and cheapest falsifying test.
+2. Read-only sol xhigh Verifier checks feasibility against code with `file:line` citations; escalate to astra only after sol fails/is uncertain.
+3. Planner picks; front routes the spec/build workflow.
 
 ## W3: Hypothesis → evidence
 
-Use this for debugging. Make the next experiment distinguish explanations rather than merely collect more logs.
+Use debugging experiments that distinguish explanations.
 
-1. **Planner:** Rank hypotheses and identify discriminating log points. A ranked list gives the experiment a clear question.
-2. **Executor:** Add throttled probes. Bounded logging keeps the experiment readable and avoids overwhelming it.
-3. **Orchestrator:** Run the experiment, including long or GPU experiments. The coordinator controls the conditions being compared.
-4. **Verifier:** Read the logs, quote supporting lines, and state which hypothesis the evidence supports. Delegated reading protects orchestrator context while keeping the conclusion checkable.
-5. **Planner:** Pick the next bisection step; **Orchestrator:** coordinate it. Each experiment should narrow the remaining uncertainty.
+1. Planner ranks hypotheses and discriminating log points.
+2. Executor adds throttled probes to keep logs bounded.
+3. Front runs the experiment, including long/GPU work.
+4. Verifier reads logs, quotes evidence, and states the supported hypothesis.
+5. Planner picks the next bisection; front coordinates it.
 
 ## W4: Prototype → rewrite
 
-Use this when a fast experiment can validate an idea before polishing it. Keep the same tests so the rewrite preserves the demonstrated behavior.
+Validate an idea before polishing it.
 
-1. **Planner/front:** Prototype quickly to validate the idea. Early evidence can prevent an expensive implementation of the wrong approach.
-2. **Executor:** Rewrite into the final readable form under the same tests. Clear names, small functions, and matching style make the result maintainable.
-3. **Orchestrator:** Check the diff and test results. Passing prototype tests is still a claim until checked.
+1. Planner/front prototypes quickly.
+2. Executor rewrites into readable final form under the same tests.
+3. Front checks diff and results.
 
 ## W5: Resolve a disagreement
 
-Use this when agents disagree on a concrete claim. Do not average their positions; correctness is not a compromise.
+Settle a concrete claim once; never average positions.
 
-1. **Orchestrator:** State the exact disputed claim. Narrowing the question makes a decisive answer possible.
-2. **Fresh Verifier:** Use astra with `-e max`, without either side's reasoning; alternatively, **Orchestrator:** run a decisive test. Unprimed judgment or direct evidence breaks the tie without inheriting the argument.
-3. **Orchestrator:** Decide from the result and record any reusable lesson. The evidence should explain the decision to future sessions.
+1. Front states the exact disputed claim.
+2. Run a decisive test or use fresh astra `-e max` without either side's reasoning. Tie-breaks are an explicit exception to the sol-first rule.
+3. Front decides from evidence; capture reusable lessons after delivery. Reopen only with new evidence.
 
 ## W6: Report pass
 
-Use this for human-facing end-of-task reports longer than about 15 lines. The owner's experience favored Codex's readable writing, so prose gets its own pass.
+For human-facing end-of-task reports longer than about 15 lines:
 
-1. **Orchestrator:** Supply verified facts as terse bullets. Keep writing work separate from responsibility for evidence.
-2. **Writer:** Rewrite them using luna or sol with `-s ro --raw`. Read-only access suits a report pass that only needs to return text.
-3. **Orchestrator:** Check that the facts are unchanged, then send the report to the user. Clear prose must not introduce new claims.
+1. Front supplies verified facts as terse bullets.
+2. Writer uses sol high (luna for short/simple text), `-s ro --raw`, and [writing rules](writing.md).
+3. Front checks facts unchanged and delivers the report.
 
-Writer assignment is independent of the front. Codex remains the assigned Writer if the front changes, unless an accepted reassignment or budget shift routes prose to Claude through `claude-task`. Choose tiers from [routing.md](routing.md); preserve `-s ro --raw` for the report pass. Human preference for the full pass is still [unvalidated](../STATE.md).
+Writer assignment is independent of front. Codex remains Writer unless accepted reassignment or budget shift routes prose to Claude; keep `-s ro --raw`. Human preference for the full pass remains [unvalidated](../STATE.md).
 
-For short replies and small tasks, the front writes directly using [writing.md](writing.md), because a handoff would cost more than the text. After delivery, general lesson capture uses one short Writer call in the background and never delays the human; follow [AGENTS.md](../AGENTS.md).
+Short replies come directly from front using the same writing rules. After delivery, one short background Writer call may capture a general surprise; evidence-based improvement proposals never block the task. Follow [AGENTS.md](../AGENTS.md).

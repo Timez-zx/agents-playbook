@@ -9,26 +9,26 @@ agents: ["Claude orchestrator (tier not recorded)", "Codex CLI Verifier (tier no
 
 ## Context
 
-The session needed a Codex review with both a specific target and custom instructions. The underlying command was `codex exec review`.
+A review needed both a target and custom instructions using `codex exec review`.
 
 ## What happened
 
-The command rejected a target flag (`--uncommitted`, `--base`, or `--commit`) combined with custom instructions. Its error included:
+The command rejected `--uncommitted`, `--base`, or `--commit` combined with instructions:
 
 ```text
 cannot be used with '[PROMPT]'
 ```
 
-Describing the target in the prompt and running a custom review avoided the incompatible argument combination. The custom review returned structured JSON findings.
+Describing the target in a custom review prompt succeeded and returned structured JSON findings.
 
 ## Lesson
 
-When using the underlying Codex command with custom instructions, put the intended target in the prompt rather than combine it with a target flag. This preserves the review scope while avoiding the command's argument restriction. The shared wrappers' public interface still accepts target flags and instructions; see [handoff.md](../playbook/handoff.md).
+Put the target in the underlying custom prompt when the CLI rejects combined arguments. Shared wrappers still accept target flags plus instructions; see [handoff](../playbook/handoff.md).
 
 ## Evidence
 
-The first session recorded the rejection and the successful custom-review workaround. This lesson describes the observed command behavior; it does not independently verify later CLI versions.
+The first session recorded rejection and the successful workaround; later CLI versions were not independently checked.
 
 ## Applies when
 
-A Codex review needs both a target and custom instructions, and the underlying CLI rejects that combination.
+Codex review requires a specific target plus instructions and rejects their argument combination.

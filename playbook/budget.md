@@ -1,49 +1,47 @@
 # Budget and efficiency
 
-Read both quotas when a task will be delegated, then choose a routing mode. Compare usage with elapsed time in the quota window, because the same percentage can mean a comfortable pace or a fast drain. Small tasks skip quota checks; the thresholds below remain unvalidated, as recorded in [STATE.md](../STATE.md).
+Quality of the outcome and explanation comes before token savings. Check both quotas only before delegation; compare usage with elapsed window time. Small tasks skip checks. Thresholds below remain [unvalidated](../STATE.md).
 
 ## Quota sources
 
-`agent-quota [--json]` reports both quotas, burn-rate status, and routing advice; `agent-quota --codex-line` is also supported. Machine-readable sources allow routing to use evidence instead of estimates.
+`agent-quota [--json]` reports both quotas, burn-rate status, and routing advice; `--codex-line` is supported.
 
-For Codex, read the newest `sessions/YYYY/MM/DD/rollout-*.jsonl` in the Codex data directory, then its last `"rate_limits"` object. The default data directory is the user's `.codex` directory. Relevant fields are:
+Codex: newest `sessions/YYYY/MM/DD/rollout-*.jsonl` in its data directory (default user's `.codex`), last `rate_limits` object:
 
-- `primary.used_percent`: usage as a percentage, so the threshold can be compared directly.
-- `primary.window_minutes`: window length; `10080` means a week, so pace must use that window rather than a day.
-- `primary.resets_at`: reset time in epoch seconds, so elapsed time can be calculated.
-- `plan_type` and `credits.balance`: plan and remaining credits, so the report includes the account's budget context.
+- `primary.used_percent`: percentage used.
+- `primary.window_minutes`: window length (`10080` = weekly).
+- `primary.resets_at`: epoch-second reset time.
+- `plan_type`, `credits.balance`: account budget context.
 
-In Claude Code desktop, use `get_usage`: plan windows expose `percentUsed` and `resetsAt`. From the command line, `claude -p --output-format stream-json --verbose` emits `rate_limit_event`; read `rate_limit_info.unifiedWindows.<window>.utilization` (0–1) and `resetsAt`. `claude-task` records these events' quota data. Convert utilization to percent before comparing it with the thresholds, so the scales match.
+Claude desktop: `get_usage` exposes `percentUsed`/`resetsAt`. CLI: `claude -p --output-format stream-json --verbose` emits `rate_limit_event`; `rate_limit_info.unifiedWindows.<window>.utilization` is 0–1, and `resetsAt` is reset time. `claude-task` records these; convert utilization to percent.
 
-## Burn-rate rule
+## Burn rate and modes
 
 ```text
 window_start = reset_time - window_length
-elapsed_percent = 100 × fraction of the window elapsed
+elapsed_percent = 100 × fraction of window elapsed
 over-burning = used_percent > elapsed_percent + 20
 ```
 
-The margin is 20 percentage points. If 30% of a window has elapsed, usage above 50% is over-burning. Usage of 45% is not over-burning by this rule, although the raw usage thresholds below still apply. Pace catches a problem early enough to shift work.
+The margin is 20 percentage points: after 30% elapsed, above 50% used is over-burning. Raw usage thresholds still apply.
 
-## Routing modes
+| State | Action |
+|---|---|
+| Both healthy | Default routing |
+| Claude over-burning or >70% used | Codex also scouts/writes; fewer/cheaper Claude subagents; front coordinates/decides |
+| Codex over-burning or >70% used | Claude sonnet routine execution; preserve Codex critical verification |
+| Either >90% used | Critical work only on that side; tell human |
 
-| State | Action | Why |
-|---|---|---|
-| Both healthy | Keep default routing | No evidence calls for a budget shift |
-| Claude over-burning or above 70% used | Codex also takes Scout and Writer work; use fewer or cheaper Claude subagents; the orchestrator only decides | Reduce Claude's routine spending while keeping its coordination judgment |
-| Codex over-burning or above 70% used | Claude sonnet subagents take routine Executor work; preserve Codex for critical-path verification | Spend remaining Codex capacity where its rigor matters most |
-| Either above 90% used | Only critical-path work on that side; tell the user | Preserve the last capacity and make the constraint visible |
+Above 90% takes priority for that side. If both are constrained, apply both restrictions. These are experimental starting thresholds, not account guarantees.
 
-The above-90% rule takes priority for that side. If both sides are constrained, apply each side's restriction rather than assume one has spare capacity. These thresholds are starting rules for this experimental playbook, not guarantees about every account.
+## Spend less without losing quality
 
-## Spend less without losing evidence
+1. Delegate large file/log reading; ask for compressed `file:line` summaries to protect front context.
+2. Write terse, complete specs; omit irrelevant history the worker cannot use.
+3. Follow [routing](routing.md): sol high for implementation/writing, sol xhigh for subtle logic/critical review; astra only escalation after sol failure/uncertainty or tie-breaks.
+4. Resume short fixes, not large revision rounds. [One Codex follow-up](../lessons/2026-10-04-resume-cache.md) had 53k/58k cached input (~90%); [Claude resume](../lessons/2026-10-04-claude-worker-sandbox.md) had 97%. [Large resumed revisions](../lessons/2026-10-04-thread-growth-cost.md) still grew substantially; use fresh sessions and precise specs. Cache rates are observations, not guarantees.
+5. Bound worker results to STATUS/CHANGES/VERIFICATION/RISKS, including unverified claims.
+6. One verifier per aspect; intent/design and correctness differ. Critical tooling combines independent code review and live probes because they catch different defects.
+7. Measure every run: both wrappers record tokens, and `ls` shows usage/status.
 
-1. Delegate reading of large files and logs. Request compressed `file:line` summaries, because orchestrator context is the scarcest resource.
-2. Write terse, complete specs. The worker cannot see the conversation, but repeating irrelevant history costs tokens without clarifying the task.
-3. Use the cheapest plausible tier and escalate on failure. Critical-path review goes straight to the top tier because missing a defect can cost more than the review.
-4. Use `resume` for follow-ups. One measured Codex follow-up served about 90% of input tokens from cache: 53k of 58k on the first follow-up turn in the same thread. This is observed evidence, not a promised cache rate; see the [lesson](../lessons/2026-10-04-resume-cache.md).
-5. Keep worker final messages within the contract's status, changes, verification, and risks sections. Bounded results keep integration cheap while exposing unverified claims.
-6. Assign one verifier per aspect. Intent/design and correctness can have different reviewers; reviewing the same aspect twice needs a reason beyond habit.
-7. Measure every run. Both wrappers record token counts, and `ls` shows usage with run status. Measurements reveal whether a routing choice saved budget or merely moved it.
-
-When the human changes fronts, preserve these rules and the authoritative specialist-role assignments unless separately reassigned. Budget shifts change who does routine work; they do not waive front responsibility, verification, or the ban on worker delegation.
+Budget shifts and front switches never waive verification, front responsibility, or the worker-delegation ban. Specialist assignments remain authoritative unless separately reassigned.

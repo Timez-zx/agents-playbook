@@ -1,38 +1,33 @@
 # Writing for people
 
-Lead with the result, then give the evidence a reader needs to understand it. The Writer owns persistent human-facing prose; the orchestrator follows the same rules for short direct replies. Coordination messages may be terse, but a human should not need to decode internal shorthand to understand the result.
+## First rule: top-down, accurate, concise
 
-## Style rules and why
-
-- **Conclusion first.** State the outcome before the process, so the reader knows what the details explain.
-- **One idea per sentence; short sentences.** Split causes, changes, and evidence into clear steps, so the reader does not have to unpack a dense paragraph.
-- **Calibrate terms and abbreviations to the reader.** Define terms a capable engineer might not know, or avoid them. Leave common abbreviations such as GPU, PR, CLI, JSON, and API unexpanded. This explains unfamiliar concepts without making familiar prose cumbersome.
-- **Prefer concrete facts.** Use numbers, public or generalized file paths, and commands when they help, so claims can be checked. Keep private paths out of public artifacts.
-- **Put required action on a separate, clearly marked line.** Use `Action:` when the reader must do something, so the request does not disappear inside an explanation. Do not invent an action when none is needed.
-- **Use tables only for comparisons.** A table helps compare roles or alternatives; connected prose explains a single line of reasoning more naturally.
-- **Do not expose unexplained internal labels.** Explain the workflow or principle instead of expecting a human to know identifiers such as “P3” or “W1,” so the text stands on its own.
-- **Match the reader's language.** Direct replies may be in Chinese if the user writes in Chinese; repo artifacts and commit messages stay in English, so the public project has a consistent shared language.
-
-## Before and after
+Give the conclusion first, supporting points next, and detail only as needed. Preserve facts and uncertainty; remove words that do not help understanding. Explanation quality comes before token savings under [AGENTS.md](../AGENTS.md).
 
 Before:
 
-> W3 confirms the race; mitigation gates teardown pending verifier ACK.
+> We checked the logs, added a guard, and ran tests. W3 confirms the race; verifier ACK is pending.
 
 After:
 
-> The logs show two tasks closing the same connection. The fix lets only one task close it. The correctness review is still pending.
+> The fix prevents two tasks from closing the same connection. Tests pass; independent correctness review is pending.
 
 > Action: Wait for that review before merging.
 
-The rewrite states the result, explains the behavior, and separates the reader's action. It also makes the remaining uncertainty visible.
+## Other rules
 
-## Who writes which text
+- One idea per sentence; short sentences keep causes and evidence clear.
+- Define unfamiliar terms for a capable engineer or avoid them. Leave GPU, PR, CLI, JSON, and API unexpanded.
+- Prefer concrete evidence: numbers, safe paths, commands. Never publish private paths.
+- Put required action on a separate `Action:` line; invent no action when none is needed.
+- Use tables for comparisons, prose for a single line of reasoning.
+- Explain internal labels rather than assume the human knows “P3” or “W1.”
+- Match the human's language in conversation; repo artifacts and commit messages are English.
 
-The Writer writes or rewrites every persistent human-facing artifact: READMEs, docs, pull request descriptions, lessons, review write-ups, and long end-of-task reports. The orchestrator supplies facts and checks that the final prose preserves them. This keeps readability from depending on the coordinator's preferred shorthand.
+## Ownership and verification
 
-Small tasks and short direct replies need no Writer handoff. Their overhead would exceed the work, so the front writes directly using the same style rules. After delivery, general lesson prose can use one short background Writer call; the human never waits for upkeep under [AGENTS.md](../AGENTS.md).
+Writer writes/rewrites persistent artifacts: READMEs, docs, PR text, lessons, review write-ups, and long reports. Front supplies facts and checks the prose. Worker coordination may be terse; human prose must stand on its own.
 
-For an end-of-task report longer than about 15 lines, use the [report pass](patterns.md): terse facts → read-only Writer → orchestrator fact check → user. For shorter replies, the orchestrator writes directly with the rules above. A handoff should buy better writing, not cost more than the reply itself.
+Small tasks and short replies skip Writer overhead but follow these rules. Reports over about 15 lines use the [report pass](patterns.md): verified facts → read-only Writer → front fact check → human.
 
-Report what changed, why, how it was verified, and what remains uncertain. Do not turn a worker's claim into a verified fact without a test, diff read, or other-model check. Clear writing must preserve the limits of the evidence.
+Explain what changed, why, verification, and remaining uncertainty. A worker claim needs a test, diff read, or other-model check before becoming a verified fact. General lesson writing happens after delivery in one short background call; the human never waits for upkeep.

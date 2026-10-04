@@ -9,20 +9,20 @@ agents: ["Claude Code (tier not recorded)", "Codex CLI (tier not recorded)"]
 
 ## Context
 
-The agents had separate usage budgets. The playbook needed to shift work toward whichever side had headroom.
+Agents had separate usage budgets; routing needed to follow available headroom.
 
 ## What happened
 
-Both quota sources were machine-readable. Codex recorded a `rate_limits` object in session rollout events. Claude Code desktop exposed `get_usage`; Claude's command-line stream emitted `rate_limit_event` with window utilization and reset times.
+Both quota sources were machine-readable. Codex recorded `rate_limits` in session events. Claude desktop exposed `get_usage`; its CLI emitted `rate_limit_event` with window utilization/reset times.
 
 ## Lesson
 
-Use `agent-quota` when a task will be delegated rather than estimate usage from memory. Read both sides and compare burn rate with elapsed window time. Machine-readable data makes routing advice automatic and repeatable, while raw percent alone can conceal an early fast drain. Small tasks skip the check because they need no routing decision.
+Before delegation, use `agent-quota` rather than memory. Compare both sides' burn rates with elapsed window time; raw usage can hide fast spending. Small tasks skip the check.
 
 ## Evidence
 
-The [budget source reference](../playbook/budget.md) names the observed fields: Codex's `primary.used_percent`, `primary.window_minutes`, `primary.resets_at`, `plan_type`, and `credits.balance`; Claude desktop's `percentUsed` / `resetsAt`; and CLI `rate_limit_info.unifiedWindows.<window>.utilization` / `resetsAt`. The first session established that the sources were readable; it did not prove that every later client or account exposes identical data.
+[Budget sources](../playbook/budget.md): Codex `primary.used_percent`, `primary.window_minutes`, `primary.resets_at`, `plan_type`, `credits.balance`; Claude desktop `percentUsed`/`resetsAt`; CLI `rate_limit_info.unifiedWindows.<window>.utilization`/`resetsAt`. These sources were readable in the first session; later clients/accounts may differ.
 
 ## Applies when
 
-Both agents have separate quota windows and their recorded usage sources are available. Routing should follow actual headroom, not an assumed preference for one agent.
+Both agents have separate quota windows and recorded usage sources are available.

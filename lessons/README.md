@@ -1,16 +1,12 @@
 # Lessons
 
-Record general lessons that a later session can use without the original conversation. Each lesson separates the observation from the rule it suggests. Keep evidence public and private-data-free so the repo can safely accumulate experience.
+Lessons record facts and suggested improvements; they do not change behavior. After delivery, capture a general surprise from substantial work: failure, measured routing outcome, tool quirk, or human output preference. Small tasks need no lesson; skip if nothing general was learned.
 
-## When and who
+Use one short background Writer call. Front supplies facts, Writer writes, front checks facts/privacy. Human never waits; upkeep stays in this repo. Retry/drop failures without calling them task failures. One incident has one lesson; relevant profiles cite that record, never rebuttal lessons. Follow [AGENTS.md](../AGENTS.md).
 
-After delivery of a substantial task, capture a general surprise: a failure mode, a routing choice that worked or failed with numbers, a tool quirk, or a human preference about output. Use one short Writer call in the background and skip capture if nothing general was learned. Small tasks need no lesson, and the human never waits for upkeep; this keeps learning useful without interrupting the real task.
+## Template
 
-The front supplies facts, the Writer writes the prose, and the front checks the facts. This gives the lesson readable English without changing who owns the outcome. One incident has one lesson; every profile discussing it cites that same file, and disputes do not produce rebuttal lessons. Follow [AGENTS.md](../AGENTS.md) for accountability and maintenance rules.
-
-## Filename and template
-
-Use one new file per lesson: `YYYY-MM-DD-<slug>.md` inside this directory. Make the slug unique and specific, so concurrent sessions do not need to edit the same file.
+Use a unique `YYYY-MM-DD-<slug>.md` here:
 
 ```markdown
 ---
@@ -20,52 +16,46 @@ status: new
 agents: ["Claude orchestrator, opus", "Codex worker, sol"]
 ---
 
-# A concrete lesson title
+# Concrete lesson title
 
 ## Context
 
-What task or environment made this relevant?
+Relevant task/environment.
 
 ## What happened
 
-What was observed? Keep the sequence short.
+Observed facts; short sequence.
 
 ## Lesson
 
-What should a future session do, and why?
+Suggested improvement and reason; not automatic adoption.
 
 ## Evidence
 
-Commands, safe excerpts, measurements, or links that support the claim.
-State any limits on verification.
+Commands, safe excerpts, measurements, links, verification limits.
 
 ## Applies when
 
-Which conditions make this lesson useful?
+Conditions where it helps.
 ```
 
-## Front matter
+Tags: `routing`, `budget`, `tooling`, `pattern`, `writing`, `environment`, `verification`, `role-evidence`. Status: `new`, `promoted`, `retired`. Agents identify models/tiers; exact model reference is [models.md](../playbook/models.md). Record `role-evidence` as concrete comparisons or dated owner statements, not brand rankings.
 
-- `date`: the lesson date, so readers can assess its age.
-- `tags`: one or more of `routing`, `budget`, `tooling`, `pattern`, `writing`, `environment`, `role-evidence`, so related evidence can be found.
-- `status`: `new`, `promoted`, or `retired`, so readers can distinguish an observation from an adopted or obsolete rule.
-- `agents`: the models or tiers involved, so an outcome is not attributed to an unspecified agent. Use the full model reference in [routing.md](../playbook/routing.md) when needed; avoid repeating model names throughout lessons.
+## Publication and promotion
 
-For `role-evidence`, record a concrete comparison: who found a bug, whose design was simpler, or whose text the human preferred. Evidence tied to a task is more useful than a general claim that one brand is better.
+Facts may go directly to main: pull/rebase → add unique lesson → commit → push. Front publishes after review; workers never commit/push. Resolve/rebase conflicts or defer upkeep. Exact commands and privacy policy: [AGENTS.md](../AGENTS.md).
 
-## Publish, promote, and protect privacy
+Two agreeing lessons or one strong lesson justify a short evidence-based proposal after delivery. Human approves → behavior-change PR; unapproved → lesson only. Mark adopted support `promoted` with a rule link after approval; retire obsolete lessons with a reason. Never publish private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private numbers; use generalized evidence.
 
-Lessons go straight to main: `git pull --rebase`, commit the new file, and push from this clone. Rebase again if concurrent work causes a conflict. Workers do not commit or push; the front publishes after checking facts. See [AGENTS.md](../AGENTS.md) for exact commands. Retry or drop failed upkeep later; do not touch the project repo or report maintenance trouble as a task failure.
+## Recorded lessons
 
-When at least two lessons agree, or one has strong evidence, open a pull request to fold the lesson into the playbook. Mark supporting lessons `promoted` and add a link to the rule. Human approval is required because a promoted rule changes behavior for every user. Mark obsolete lessons `retired` with a reason, so the evidence history remains understandable.
-
-Generalize before publishing. Never include private repo names, paths under a user's home, emails, hostnames, credentials, account identifiers, session identifiers, or unpublished numbers from private work. Use placeholders and safe excerpts; a lesson should preserve the cause and result without identifying the original private project.
-
-## Initial lessons
-
-- [Ubuntu 24.04 sandbox startup](2026-10-04-ubuntu-sandbox.md)
-- [Review targets and custom instructions](2026-10-04-review-target-instructions.md)
-- [Cached input on resumed work](2026-10-04-resume-cache.md)
-- [A separate Writer improves readability](2026-10-04-writer-readability.md)
-- [Machine-readable quotas enable routing](2026-10-04-machine-readable-quotas.md)
-- [User-level skills reach delegated workers](2026-10-04-user-skills-reach-workers.md)
+- [Ubuntu sandbox startup](2026-10-04-ubuntu-sandbox.md)
+- [Review targets and instructions](2026-10-04-review-target-instructions.md)
+- [Cached Codex resume](2026-10-04-resume-cache.md)
+- [Writer readability](2026-10-04-writer-readability.md)
+- [Machine-readable quotas](2026-10-04-machine-readable-quotas.md)
+- [User-level skills reach workers](2026-10-04-user-skills-reach-workers.md)
+- [Claude worker sandbox/live resume](2026-10-04-claude-worker-sandbox.md)
+- [Read-only spec defect and independent review](2026-10-04-ro-tier-defect.md)
+- [Large-thread growth cost](2026-10-04-thread-growth-cost.md)
+- [Owner's sol routing decision](2026-10-04-sol-routing-default.md)
