@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""Report the latest recorded quotas; never contact either agent service."""
+import argparse
+import json
+import math
+import os
+from pathlib import Path
+import sys
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from agent_events import claude_windows, object_of, read_events
+
+
+CLAUDE_HINT = "Use Claude Code desktop get_usage, or run a tiny claude-task run -t haiku -p 'Reply OK' sample."
+
+
+def number(value):
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+        return value
+    return None
+
+
+def window(used, resets, seconds, now):
+    used, resets, seconds = number(used), number(resets), number(seconds)
+    if used is None:
+        return None
+    elapsed = None
+    if resets is not None and seconds is not None and seconds > 0:
+        elapsed = max(0, min(100, 100 * (now - (resets - seconds)) / seconds))
+    if used > 90:
+        status = "critical"
+    elif used > 70:
+        status = "high"
+    elif elapsed is not None and used > elapsed + 20:
+        status = "over-burning"
+    else:
+        status = "healthy"
+    return dict(used_percent=used, elapsed_percent=elapsed, resets_at=resets,
+                window_seconds=seconds, status=status)
+
+
+def candidates(root, pattern, errors):
+    files = []
+    try:
+        for path in root.glob(pattern):
+            try:
+                files.append((path.stat().st_mtime, path))
+            except OSError as error:
+                errors.append(f"Cannot read {path}: {error.strerror}")
+    except OSError as error:
+        errors.append(f"Cannot read {root}: {error.strerror}")
+    return sorted(files, key=lambda pair: (pair[0], str(pair[1])), reverse=True)
+
+
+def quota(agent, now):
+    result = dict(source=None, age_seconds=None, windows={}, errors=[])
+    errors = result["errors"]
+    if agent == "codex":
+        root = Path.home() / ".codex/sessions"
+        files = candidates(root, "????/??/??/rollout-*.jsonl", errors)
+        if not files:
+            errors.append(f"Cannot read Codex quota: no rollout files in {root}")
+            return result
+        modified, path = files[0]
+        limits = None
+        try:
+            for event in read_events(path):
+                value = object_of(event.get("payload")).get("rate_limits", event.get("rate_limits"))
+                if isinstance(value, dict):
+                    limits = value
+        except OSError as error:
+            errors.append(f"Cannot read {path}: {error.strerror}")
+        if limits is None:
+            errors.append(f"Cannot read Codex quota: no rate_limits object in {path}")
+            return result
+        result.update(source=str(path), age_seconds=max(0, now - modified),
+                      plan_type=limits.get("plan_type"), credits=limits.get("credits"))
+        for key in ("primary", "secondary"):
+            values = object_of(limits.get(key))
+            minutes = number(values.get("window_minutes"))
+            data = window(values.get("used_percent"), values.get("resets_at"),
+                          minutes * 60 if minutes is not None else None, now)
+            if data is not None:
+                result["windows"][key] = data
+    else:
+        root = Path(os.environ.get("AGENT_RUNS_ROOT") or str(Path.home() / ".agent-runs"))
+        files = candidates(root, "????????-??????-claude-*/events.jsonl", errors)
+        for modified, path in files:
+            windows = {}
+            try:
+                for event in read_events(path):
+                    if event.get("type") == "rate_limit_event":
+                        windows.update(claude_windows(event))
+            except OSError as error:
+                errors.append(f"Cannot read {path}: {error.strerror}")
+                continue
+            if not windows:
+                continue
+            if result["source"] is None:
+                result.update(source=str(path), age_seconds=max(0, now - modified))
+            for key, values in windows.items():
+                utilization = number(values.get("utilization"))
+                data = window(utilization * 100 if utilization is not None else None,
+                              values.get("resetsAt"), {"five_hour": 18000, "seven_day": 604800}.get(key), now)
+                if data is not None and key not in result["windows"]:
+                    data.update(source=str(path), age_seconds=max(0, now - modified))
+                    result["windows"][key] = data
+        if result["source"] is None:
+            errors.append(f"Cannot read Claude quota: no rate_limit_event in {root}/*-claude-*/events.jsonl")
+
+    if not result["windows"] and result["source"]:
+        errors.append(f"Cannot read quota windows in {result['source']}")
+    if agent == "claude" and not result["windows"]:
+        result["hint"] = CLAUDE_HINT
+    return result
+
+
+def advice(quotas):
+    messages = []
+    all_statuses = {agent: {w["status"] for w in data["windows"].values()} for agent, data in quotas.items()}
+    for agent, statuses in all_statuses.items():
+        if "critical" in statuses:
+            messages.append(f"{agent.title()} >90%: tell the user; only critical-path work on this side.")
+        elif statuses & {"high", "over-burning"}:
+            other = "codex" if agent == "claude" else "claude"
+            if "critical" in all_statuses[other]:
+                messages.append(f"Reduce noncritical {agent.title()} work; {other.title()} has no headroom for it.")
+            elif agent == "claude":
+                messages.append("Shift Scout and Writer work to Codex; use fewer/cheaper Claude subagents; Claude Orchestrator only decides.")
+            else:
+                messages.append("Shift routine Executor work to Claude sonnet; keep Codex for critical-path Verifier work.")
+    if not messages:
+        messages.append("Use default routing." if all(q["windows"] for q in quotas.values()) else "Check unknown quotas before shifting load; use default routing provisionally.")
+    return " ".join(messages)
+
+
+def summary(agent, data):
+    prefix = agent.title()
+    if not data["windows"]:
+        return f"{prefix}: unknown — " + "; ".join(data["errors"])
+    parts = []
+    for key, values in data["windows"].items():
+        elapsed = values["elapsed_percent"]
+        elapsed_text = f"{elapsed:.1f}%" if elapsed is not None else "unknown"
+        age = f" age={values['age_seconds']:.0f}s" if "age_seconds" in values else ""
+        parts.append(f"{key} used={values['used_percent']:.1f}% elapsed={elapsed_text} {values['status']}{age}")
+    return f"{prefix}: " + "; ".join(parts) + f" (record age {data['age_seconds']:.0f}s)"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--json", action="store_true", help="machine-readable quotas and routing advice")
+    group.add_argument("--codex-line", action="store_true", help="only the one-line Codex summary")
+    args = parser.parse_args()
+    now = time.time()
+    codex = quota("codex", now)
+    if args.codex_line:
+        print(summary("codex", codex))
+        return
+    quotas = dict(codex=codex, claude=quota("claude", now))
+    routing = advice(quotas)
+    if args.json:
+        print(json.dumps(dict(**quotas, advice=routing), indent=2))
+    else:
+        for agent, data in quotas.items():
+            print(summary(agent, data))
+            if data["windows"]:
+                for error in data["errors"]:
+                    print(error)
+            if data.get("hint"):
+                print(data["hint"])
+        print("Routing: " + routing)
+
+
+if __name__ == "__main__":
+    main()
