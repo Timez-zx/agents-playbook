@@ -48,14 +48,18 @@ Settle a concrete claim once; never average positions.
 2. Run a decisive test or use fresh astra `-e max` without either side's reasoning. Tie-breaks are an explicit exception to the sol-first rule.
 3. Front decides from evidence; capture reusable lessons after delivery. Reopen only with new evidence.
 
-## W6: Report pass
+## W6: Structure → prose → cold read → checked fixes
 
-For human-facing end-of-task reports longer than about 15 lines:
+Use for reports to the human over about 15 lines, PR descriptions, and README-level documents. Front owns the logic; Writer owns the wording.
 
-1. Front supplies verified facts as terse bullets.
-2. Writer uses sol high (luna for short/simple text), `-s ro --raw`, and [writing rules](writing.md).
-3. Front checks facts unchanged and delivers the report.
+1. **Front builds the structure.** Use [skeleton-format.md](templates/skeleton-format.md): reader and question, one ANSWER, GROUPS of same-kind POINTS with evidence, then DECISIONS. Summary sentences stand alone. Progress reports separate findings, needed open questions, and reader decisions.
 
-Writer assignment is independent of front. Codex remains Writer unless accepted reassignment or budget shift routes prose to Claude; keep `-s ro --raw`. Human preference for the full pass remains [unvalidated](../STATE.md).
+2. **Writer writes the prose.** Use fresh Codex sol high, `-s ro --raw`, with [report-writer.md](templates/report-writer.md) plus the skeleton. Follow [writing.md](writing.md); do not change structure, facts, numbers, or uncertainty.
 
-Short replies come directly from front using the same writing rules. After delivery, one short background Writer call may capture a general surprise; evidence-based improvement proposals never block the task. Follow [AGENTS.md](../AGENTS.md).
+3. **Cold reader checks understanding.** Use fresh Codex luna medium, `-s ro --raw`, with [cold-read.md](templates/cold-read.md) plus only the finished text. Give no skeleton or background. Restate the answer, groups, points, and decisions; flag unclear words, summaries that cannot stand alone, mixed-kind groups, and uncomfortable formatting.
+
+4. **Front triages; Writer fixes; front verifies.** Fix only real blockers: cold readers can over-flag wording explained in the next sentence. Writer resumes for short fixes. Front checks the result against the skeleton and confirms facts unchanged before delivery.
+
+Writer assignment is independent of front. Codex remains Writer unless accepted reassignment or budget shift routes prose to Claude; keep `-s ro --raw` and the independent cold read. The process was [validated once with owner approval](../STATE.md) on 2026-10-04; [the lesson](../lessons/2026-10-04-pyramid-report-process.md) records evidence and limits.
+
+Short replies follow [writing.md](writing.md) directly. After delivery, one short background Writer call may capture a general surprise; evidence-based improvement proposals never block the task. Follow [AGENTS.md](../AGENTS.md).

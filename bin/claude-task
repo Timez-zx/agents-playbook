@@ -108,6 +108,7 @@ launch() {
     model="$(meta_get "$parent" MODEL)"; effort="$(meta_get "$parent" EFFORT)"
     sbx="$(meta_get "$parent" SANDBOX_SHORT)"; cwd="$(meta_get "$parent" CWD)"
     net="$(meta_get "$parent" NET)"
+    raw="$(meta_get "$parent" RAW)"; raw="${raw:-0}"  # a raw run stays raw on resume
     use_tier_effort=0
   fi
 
@@ -185,7 +186,7 @@ launch() {
   local start; start="$(date +%s)"
   {
     echo "NAME=$name"; echo "KIND=$kind"; echo "AGENT=claude"; echo "MODEL=$model"; echo "EFFORT=$effort"
-    echo "SANDBOX=$sandbox"; echo "SANDBOX_SHORT=$sbx"; echo "NET=$net"; echo "CWD=$cwd"
+    echo "SANDBOX=$sandbox"; echo "SANDBOX_SHORT=$sbx"; echo "NET=$net"; echo "RAW=$raw"; echo "CWD=$cwd"
     echo "PARENT=$parent"; echo "START=$start"
   } > "$run/meta.env"
 

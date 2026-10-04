@@ -85,9 +85,11 @@ Use `git add STATE.md` or `git add playbook/models.md` for those facts. Resolve 
 
 Anything changing how agents work requires human approval first: skills, scripts, playbook rules, roles, profiles, and their proposal records. Then prepare a branch/PR; the human approves merging shared behavior. Replace placeholders:
 
+Keep the fixed clone on main and develop PR branches in separate worktrees, because switching its branch silently changes the installed skills through symlinks.
+
 ```sh
 git pull --rebase
-git switch -c change-branch
+git worktree add ../agents-playbook-wt/change-branch -b change-branch # Run the remaining commands in that worktree.
 git add changed-file.md
 git commit -m "Describe the behavior change"
 git push -u origin change-branch

@@ -6,6 +6,8 @@
 
 Owner, 2026-10-04: Claude is “smarter, more flexible, more creative at high-level ideas.” This supports Planner/Ideator for this owner's work, not a universal ranking.
 
+The owner's 2026-10-04 feedback and one approved report support Claude front owning structure and logic before Writer drafts prose; see the [pyramid-process evidence](lessons/2026-10-04-pyramid-report-process.md).
+
 ## Weaknesses
 
 Owner, 2026-10-04: written feedback can be “hard for humans to read”: dense, jargon, unexplained abbreviations, skipped steps. The [readability incident](lessons/2026-10-04-writer-readability.md) meets the explicit-statement threshold; it is one incident.
@@ -26,7 +28,7 @@ Candidates are trials, not advantages. A role trial does not require changing fr
 
 ## Mitigations in force
 
-Route persistent prose through Writer and long reports through the [report pass](playbook/patterns.md), based on the [readability evidence](lessons/2026-10-04-writer-readability.md). Preference for the full pass remains unvalidated.
+Route persistent prose through Writer and long documents through the [structure-first process](playbook/patterns.md#w6-structure--prose--cold-read--checked-fixes), based on the [readability incident](lessons/2026-10-04-writer-readability.md) and [one owner-approved validation](lessons/2026-10-04-pyramid-report-process.md).
 
 ## Self-reported evidence
 
