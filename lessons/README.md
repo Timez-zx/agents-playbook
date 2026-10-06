@@ -2,7 +2,7 @@
 
 Lessons hold general principles, not cases or behavior changes. Roles (front, Writer, workers), STATE, and workflows W1–W6 are defined in [AGENTS.md](../AGENTS.md) and [patterns.md](../playbook/patterns.md).
 
-Before recording anything, ask: would this observation change how an agent works on a different project, with a different model or tool? If yes, it is general. If it concerns one tool, environment, person, or project, it is not general: record no lesson. Put such an operational fact where it is used (install, handoff, budget, or routing notes), an owner preference in the rule document it affects (for example writing.md or routing.md), and agent-specific evidence, dated, in that agent's profile.
+Before recording anything, ask: would this observation change how an agent works on a different project, with a different model or tool? If yes, it is general. If it concerns one tool, environment, person, or project, it is not general: record no lesson. Put such an operational fact where it is used (install, handoff, budget, or routing notes), agent-specific evidence and owner preferences about an agent, dated, in that agent's profile, and owner preferences about how work is done in the rule document they affect (for example writing.md or routing.md).
 
 For a general observation, identify the fundamental problem behind it. If a lesson already states that problem, change it only when the observation adds a new kind of work where the principle applies (a new “How to apply” item) or corrects its wording; otherwise change nothing. If no lesson states that problem, add a new lesson file named after the problem, for example `independent-validation.md`. State the principle only; never narrate cases.
 

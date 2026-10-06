@@ -70,7 +70,7 @@ Repo text and commit messages are English; conversation matches the human's lang
 
 ### Facts: small direct commits to main
 
-Lessons, small STATE updates, and model-catalog facts may go directly to main after fact/privacy checks. Name lessons by the fundamental problem; refine existing coverage before adding. Dated comparisons and owner preferences belong in profiles, not universal rankings or lessons. Replace illustrative names below:
+Lessons, small STATE updates, and model-catalog facts may go directly to main after fact/privacy checks. Name lessons by the fundamental problem; refine existing coverage before adding. Dated comparisons and owner preferences about agents belong in profiles; owner preferences about how work is done belong in the rule they affect; neither is a lesson or a universal ranking. Replace illustrative names below:
 
 ```sh
 git pull --rebase
