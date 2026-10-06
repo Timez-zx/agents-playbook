@@ -2,11 +2,11 @@
 
 ## Strengths
 
-Owner, 2026-10-04: Codex is “more rigorous and detailed”; its “written output is easier for humans to read.” The earlier [readability evidence](lessons/2026-10-04-writer-readability.md) supports Writer.
+Owner, 2026-10-04: Codex is “more rigorous and detailed”; its “written output is easier for humans to read.” This owner feedback supports Writer.
 
-One owner-approved report on 2026-10-04 supports sol high for prose and fresh luna medium for cold reading: the reader recovered the full structure and caught real issues, with some over-flagging. See the [pyramid-process evidence](lessons/2026-10-04-pyramid-report-process.md).
+One owner-approved report on 2026-10-04 supports sol high for prose and fresh luna medium for cold reading: the reader recovered the full structure and caught real issues, with some over-flagging.
 
-A fresh gpt-6-astra review independently found the read-only defect and four other high-severity defects missed by live probes. The [review incident](lessons/2026-10-04-ro-tier-defect.md) supports Verifier; it does not compare astra with sol on the same review. The [owner's sol comparison](lessons/2026-10-04-sol-routing-default.md) supports current routing.
+2026-10-04: a fresh gpt-6-astra review independently found the read-only defect and four other high-severity defects missed by live probes. This supports Verifier; it does not compare astra with sol on the same review. Owner, 2026-10-04: sol is close to astra on most tasks at lower cost; this supports current routing.
 
 ## Weaknesses
 
@@ -29,8 +29,8 @@ Planner/front trials require separate evidence and a [human decision](AGENTS.md)
 
 ## Mitigations in force
 
-Use short resumed fixes, but fresh sessions for large revision rounds, based on the [thread-growth measurement](lessons/2026-10-04-thread-growth-cost.md). Fresh verification stays independent.
+Use short resumed fixes, but fresh sessions for large revision rounds, under the [context-cost principle](lessons/context-cost.md). Fresh verification stays independent.
 
 ## Operating notes
 
-[Ubuntu sandbox policy](lessons/2026-10-04-ubuntu-sandbox.md), [review argument restrictions](lessons/2026-10-04-review-target-instructions.md), and [user-level skills reaching workers](lessons/2026-10-04-user-skills-reach-workers.md) are observed operating constraints, not weaknesses. The last observation has no assessed code-quality outcome.
+Ubuntu AppArmor may block sandbox startup; Codex review rejects target flags plus custom instructions; user-level skills reach workers. These are operating constraints, not weaknesses; the skill observation has no assessed code-quality outcome. See [handoff notes](playbook/handoff.md) for the facts and usable workarounds.

@@ -1,62 +1,58 @@
-# Lessons
+# General lessons
 
-Lessons record facts and suggested improvements; they do not change behavior. After delivery, capture a general surprise from substantial work: failure, measured routing outcome, tool quirk, or human output preference. Small tasks need no lesson; skip if nothing general was learned.
+Lessons hold general principles, not cases or behavior changes. Roles (front, Writer, workers), STATE, and workflows W1–W6 are defined in [AGENTS.md](../AGENTS.md) and [patterns.md](../playbook/patterns.md).
 
-Use one short background Writer call. Front supplies facts, Writer writes, front checks facts/privacy. Human never waits; upkeep stays in this repo. Retry/drop failures without calling them task failures. One incident has one lesson; relevant profiles cite that record, never rebuttal lessons. Follow [AGENTS.md](../AGENTS.md).
+Before recording anything, ask: would this observation change how an agent works on a different project, with a different model or tool? If yes, it is general. If it concerns one tool, environment, person, or project, it is not general: record no lesson. Put such an operational fact where it is used (install, handoff, budget, or routing notes), agent-specific evidence and owner preferences about an agent, dated, in that agent's profile, and owner preferences about how work is done in the rule document they affect (for example writing.md or routing.md).
+
+For a general observation, identify the fundamental problem behind it. If a lesson already states that problem, change it only when the observation adds a new kind of work where the principle applies (a new “How to apply” item) or corrects its wording; otherwise change nothing. If no lesson states that problem, add a new lesson file named after the problem, for example `independent-validation.md`. State the principle only; never narrate cases.
+
+- After delivery, make at most one short background Writer call, and only for a new principle or a refinement.
+- The front supplies facts and checks prose and privacy.
+- Upkeep stays in this repo and never makes the human wait; retry or drop failed upkeep without reporting it as a task failure.
+- One incident, one record: a lesson refinement, a dated profile entry, or a fact in the document that uses it; no rebuttal records.
 
 ## Template
 
-Use a unique `YYYY-MM-DD-<slug>.md` here:
-
 ```markdown
 ---
-date: YYYY-MM-DD
-tags: [tooling]
-status: new
-agents: ["Claude orchestrator, opus", "Codex worker, sol"]
+status: new|promoted
+updated: YYYY-MM-DD
 ---
 
-# Concrete lesson title
+# <principle as a title>
 
-## Context
+## Principle
 
-Relevant task/environment.
+The general principle.
 
-## What happened
+## Why it happens
 
-Observed facts; short sequence.
+The underlying mechanism.
 
-## Lesson
+## How to apply
 
-Suggested improvement and reason; not automatic adoption.
-
-## Evidence
-
-Commands, safe excerpts, measurements, links, verification limits.
+Concrete checks or actions; distinguish suggestions awaiting approval from rules.
 
 ## Applies when
 
-Conditions where it helps.
+Conditions where the principle helps.
+
+## Rules
+
+Links to promoted rules, or “none yet”.
 ```
 
-Tags: `routing`, `budget`, `tooling`, `pattern`, `writing`, `environment`, `verification`, `role-evidence`. Status: `new`, `promoted`, `retired`. Agents identify models/tiers; exact model reference is [models.md](../playbook/models.md). Record `role-evidence` as concrete comparisons or dated owner statements, not brand rankings.
+## Publication, promotion, and retirement
 
-## Publication and promotion
+General lesson additions/refinements, small STATE updates, and model-catalog facts may go directly to main after front fact/privacy review: pull/rebase → add `lessons/<problem>.md` → commit → push. Workers never commit/push. Resolve/rebase conflicts or defer upkeep; exact commands are in [AGENTS.md](../AGENTS.md#facts-small-direct-commits-to-main).
 
-Facts may go directly to main: pull/rebase → add unique lesson → commit → push. Front publishes after review; workers never commit/push. Resolve/rebase conflicts or defer upkeep. Exact commands and privacy policy: [AGENTS.md](../AGENTS.md).
+Propose a general lesson for promotion with evidence after delivery. Owner approval authorizes folding it into a playbook rule through a PR; mark it `promoted` and link the rules. Unapproved suggestions remain lessons. Retire obsolete lessons with a reason in the change; preserve history. Keep the set small: when lessons with `status: new` exceed about eight, the next repo-maintenance session merges, promotes, or retires before adding.
 
-Two agreeing lessons or one strong lesson justify a short evidence-based proposal after delivery. Human approves → behavior-change PR; unapproved → lesson only. Mark adopted support `promoted` with a rule link after approval; retire obsolete lessons with a reason. Never publish private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private numbers; use generalized evidence.
+Never publish private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private numbers. Generalize observations; follow [writing.md](../playbook/writing.md) and [privacy policy](../AGENTS.md#privacy-and-review).
 
-## Recorded lessons
+Case records written before this restructuring are in git history before this change.
 
-- [Ubuntu sandbox startup](2026-10-04-ubuntu-sandbox.md)
-- [Review targets and instructions](2026-10-04-review-target-instructions.md)
-- [Cached Codex resume](2026-10-04-resume-cache.md)
-- [Writer readability](2026-10-04-writer-readability.md)
-- [Machine-readable quotas](2026-10-04-machine-readable-quotas.md)
-- [User-level skills reach workers](2026-10-04-user-skills-reach-workers.md)
-- [Claude worker sandbox/live resume](2026-10-04-claude-worker-sandbox.md)
-- [Read-only spec defect and independent review](2026-10-04-ro-tier-defect.md)
-- [Research definition changes need a falsifying test first](2026-10-06-definition-change-falsify-first.md)
-- [Large-thread growth cost](2026-10-04-thread-growth-cost.md)
-- [Owner's sol routing decision](2026-10-04-sol-routing-default.md)
+## Index
+
+- [Validate important outputs independently against their real target](independent-validation.md) — `new`: a check that uses the author's own spec or understanding cannot find errors in it; existing applications are rules, while the research-definition check awaits approval.
+- [Reuse sessions only while their context stays small and relevant](context-cost.md) — `promoted`: carried context is resent on every call, even when cached.

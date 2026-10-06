@@ -17,7 +17,7 @@ Use as Claude front for non-trivial coding/debugging/review. Exclude `AGENT_ROLE
 
 Small questions, edits below about 30 lines, quick lookups: just do them; no delegation, quota check, Writer call, or lesson. Work directly if already in context or a spec costs more than the work.
 
-Read only [repo/STATE.md](repo/STATE.md) at startup; open other docs on demand. Run `agent-quota` only before delegation. For repo changes, read [repo/AGENTS.md](repo/AGENTS.md) first and follow its repo read order.
+Read only [repo/STATE.md](repo/STATE.md) at startup; open other docs on demand. Run `agent-quota` only before delegation. For repo changes, read [repo/AGENTS.md](repo/AGENTS.md) first and read STATE → involved profiles → roles → lessons index → open proposals. Never preload the whole playbook.
 
 Run `model-review --if-stale 3 --claude-models "<the Claude model ids you know from your system context>"`. Free/silent when model lists are unchanged; only changed lists start one background Codex sol `--search` research run. Read its completed result, update [repo/playbook/models.md](repo/playbook/models.md) directly with facts/evidence/dates, mention in one line at a natural point, and propose any routing change after delivery under AGENTS (human approval required). Research is event-driven, not scheduled.
 
@@ -93,18 +93,18 @@ Persistent prose gets Writer pass; front supplies structure and evidence, then c
 
 ## After delivery and upkeep
 
-After result, one short background Writer call may record a general surprise; skip if none. Human never waits. Upkeep stays in this repo, never project repos; project work does not edit playbook. Retry/drop failures without calling them task failures.
+After result, use one short background Writer call only for a general principle that is new or refines a lesson; otherwise skip. Human never waits. Upkeep stays in this repo, never project repos; project work does not edit playbook. Retry/drop failures without calling them task failures.
 
-When normal work reveals a better general collaboration method, front proposes it after delivery in one or two lines with evidence. Human approves → behavior-change PR; unapproved → lesson only. Front supplies facts → Writer uses [repo/lessons/README.md](repo/lessons/README.md) → front checks facts/privacy. One incident/lesson; no rebuttals. No private repo names, home paths, emails, hostnames, credentials, account/session IDs, unpublished private numbers.
+When normal work reveals a better general collaboration method, front proposes it after delivery in one or two lines with evidence. Human approves → behavior-change PR; unapproved → lesson only. Front supplies facts → Writer uses [repo/lessons/README.md](repo/lessons/README.md) → front checks facts/privacy. Lessons hold general principles, not cases or behavior changes. Judge generality across projects/models/agents first; non-general observations never enter lessons. Identify the fundamental problem; refine its existing lesson or add one named by the problem.
 
-Derive clone from loaded skill's `repo` link, not project/install directory; replace illustrative placeholders:
+One incident, one record: dated agent evidence in its profile, general principles in lessons, operational facts where used; no rebuttal records. Weakness threshold: two independent incidents or an explicit human statement; single incidents remain dated profile evidence. Profile claims carry dated evidence inline or quote the human. No private repo names, home paths, emails, hostnames, credentials, account/session IDs, unpublished private numbers.
 
 ```sh
 REPO="$(readlink -f "<skill-dir>/repo")"
 git -C "$REPO" pull --rebase
-git -C "$REPO" add -- "$REPO/lessons/YYYY-MM-DD-topic.md"
+git -C "$REPO" add -- "$REPO/lessons/<problem>.md"
 git -C "$REPO" commit -m "Record lesson about topic"
 git -C "$REPO" push
 ```
 
-Small lessons/STATE/model-fact updates go to main; workers never publish. Resolve/rebase conflicts or defer upkeep. ≥2 agreeing lessons or one strong lesson justify promotion proposal; approval first, then PR and promoted/link rule. Role/front proposals: chat then [repo/proposals/README.md](repo/proposals/README.md); human decides. Behavior changes need approval and PR/merge review under AGENTS; [repo/CONTRIBUTING.md](repo/CONTRIBUTING.md) points there.
+Derive clone from the loaded skill's `repo` link, not project/install directory; replace illustrative placeholders. Small lessons/STATE/model-fact updates go to main; workers never publish. Resolve/rebase conflicts or defer upkeep. Fold an owner-approved general lesson into a playbook rule through a PR; mark `promoted` with rule links. Role/front proposals: chat then [repo/proposals/README.md](repo/proposals/README.md); human decides. Behavior changes need approval and PR/merge review under AGENTS; [repo/CONTRIBUTING.md](repo/CONTRIBUTING.md) points there.

@@ -60,6 +60,6 @@ Use for reports to the human over about 15 lines, PR descriptions, and README-le
 
 4. **Front triages; Writer fixes; front verifies.** Fix only real blockers: cold readers can over-flag wording explained in the next sentence. Writer resumes for short fixes. Front checks the result against the skeleton and confirms facts unchanged before delivery.
 
-Writer assignment is independent of front. Codex remains Writer unless accepted reassignment or budget shift routes prose to Claude; keep `-s ro --raw` and the independent cold read. The process was [validated once with owner approval](../STATE.md) on 2026-10-04; [the lesson](../lessons/2026-10-04-pyramid-report-process.md) records evidence and limits.
+Writer assignment is independent of front. Codex remains Writer unless accepted reassignment or budget shift routes prose to Claude; keep `-s ro --raw` and the independent cold read. The process was [validated once with owner approval](../STATE.md) on 2026-10-04; [independent validation](../lessons/independent-validation.md) explains the cold-read principle. One report does not establish the process across document types.
 
-Short replies follow [writing.md](writing.md) directly. After delivery, one short background Writer call may capture a general surprise; evidence-based improvement proposals never block the task. Follow [AGENTS.md](../AGENTS.md).
+Short replies follow [writing.md](writing.md) directly. After delivery, use one short background Writer call only for a general principle that is new or refines a lesson; otherwise skip. Evidence-based improvement proposals never block the task. Follow [AGENTS.md](../AGENTS.md).
