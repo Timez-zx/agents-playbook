@@ -46,13 +46,13 @@ Check worker “done” through tests, a diff read, or another model. One verifi
 
 Check both quotas before delegation and compare burn rate, not only raw usage. [Budget rules](budget.md) preserve headroom; small tasks skip checks.
 
-## P7: Capture facts; propose rules
+## P7: Capture general principles; propose rules
 
-After delivery, record general surprises without private data. One incident has one lesson, cited by every relevant profile. Two agreeing lessons or one strong lesson justify proposing a rule; adoption requires human approval and a PR.
+Before recording, judge generality across projects, models, and agents; non-general observations never enter lessons. Refine the lesson for the fundamental problem or add one named by it. One incident, one record: dated agent evidence in its profile, general principles in lessons, operational facts where used; no rebuttal records. Propose a general lesson with evidence; owner approval authorizes folding it into a playbook rule through a PR, then marking it `promoted` with rule links.
 
 ## P8: Non-intrusive by design
 
-Small questions, edits below about 30 lines, and quick lookups get done directly, without delegation, quota checks, or lessons. Ordinary startup reads only STATE and runs the Claude skill's silent model-change check; other files open on demand. After delivery, capture a general surprise with one short background Writer call; skip if none. Upkeep stays in this repo, never project repos. Retry/drop failures without delaying the human or calling them task failures.
+Small questions, edits below about 30 lines, and quick lookups get done directly, without delegation, quota checks, or lessons. Ordinary startup reads only STATE and runs the Claude skill's silent model-change check; other files open on demand. After delivery, use one short background Writer call only for a new general principle or a refinement; otherwise skip. Upkeep stays in this repo, never project repos. Retry/drop failures without delaying the human or calling them task failures.
 
 If normal work reveals a better general collaboration method, front proposes it after delivery in one or two lines with evidence. Human approves → apply through a behavior-change PR. Without approval → lesson only. Facts may be committed directly; anything changing agent behavior needs approval first. The proposal never blocks the task.
 

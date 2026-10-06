@@ -39,7 +39,7 @@ Above 90% takes priority for that side. If both are constrained, apply both rest
 1. Delegate large file/log reading; ask for compressed `file:line` summaries to protect front context.
 2. Write terse, complete specs; omit irrelevant history the worker cannot use.
 3. Follow [routing](routing.md): sol high for implementation/writing, sol xhigh for subtle logic/critical review; astra only escalation after sol failure/uncertainty or tie-breaks.
-4. Resume short fixes, not large revision rounds. [One Codex follow-up](../lessons/2026-10-04-resume-cache.md) had 53k/58k cached input (~90%); [Claude resume](../lessons/2026-10-04-claude-worker-sandbox.md) had 97%. [Large resumed revisions](../lessons/2026-10-04-thread-growth-cost.md) still grew substantially; use fresh sessions and precise specs. Cache rates are observations, not guarantees.
+4. Resume short fixes; use fresh sessions and precise specs for large revision rounds. [Carried context](../lessons/context-cost.md) is resent even when cached. Observed on 2026-10-04: one Codex follow-up had 53k/58k cached input (~90%); one Claude resume had 97%. Cache rates are observations, not guarantees.
 5. Bound worker results to STATUS/CHANGES/VERIFICATION/RISKS, including unverified claims.
 6. One verifier per aspect; intent/design and correctness differ. Critical tooling combines independent code review and live probes because they catch different defects.
 7. Measure every run: both wrappers record tokens, and `ls` shows usage/status.

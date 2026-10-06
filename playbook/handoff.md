@@ -29,7 +29,7 @@ VERIFICATION: what ran, results, and what was NOT verified
 RISKS: assumptions, uncertainties, follow-ups
 ```
 
-Orchestrator skills exclude `AGENT_ROLE=worker` or prompts carrying a handoff contract. User-level skills/instructions still reach workers; the [observed announcement](../lessons/2026-10-04-user-skills-reach-workers.md) does not establish a code-quality failure.
+Orchestrator skills exclude `AGENT_ROLE=worker` or prompts carrying a handoff contract. User-level skills/instructions still reach workers; account for possible conflicts with the handoff. The observed skill announcement had no assessed code-quality outcome.
 
 ## Shared review contract
 
@@ -76,7 +76,7 @@ Options select name, tier, model, effort, sandbox, working directory, network, e
 | Claude `rw` | Sandboxed Bash can write inside working directory; outside writes fail; no network |
 | Either `full` | No restrictions (Codex danger-full-access) |
 
-Claude `ro` auto-allows commands such as `git diff`, `git log`, and `grep`; write commands are blocked. Non-interactive `claude -p` cannot answer approvals. Do not enable its Bash sandbox for read-only workers. See the [live sandbox evidence](../lessons/2026-10-04-claude-worker-sandbox.md).
+Claude `ro` auto-allows commands such as `git diff`, `git log`, and `grep`; write commands are blocked. Non-interactive `claude -p` cannot answer approvals. Do not enable its Bash sandbox for read-only workers. Validate permission boundaries with live write probes inside and outside the working directory; see [independent validation](../lessons/independent-validation.md).
 
 ```sh
 codex-task run -n implement -t sol -s rw -C WORKTREE -f spec.md
@@ -89,11 +89,13 @@ claude-task run -n proposals -t opus -s ro -f ideas.md
 agent-quota --json
 ```
 
-`WORKTREE`/`RUN_DIR` are placeholders. Both wrappers accept the shared subcommands/options. Underlying Codex review rejects target flags plus custom instructions; wrapper custom review describes the target in the prompt and returns structured JSON findings. See the [observed restriction](../lessons/2026-10-04-review-target-instructions.md).
+`WORKTREE`/`RUN_DIR` are placeholders. Both wrappers accept the shared subcommands/options. Underlying Codex review rejects target flags plus custom instructions; wrapper custom review describes the target in the prompt and returns structured JSON findings. The rejected combinations are `--uncommitted`, `--base`, or `--commit` with `[PROMPT]`.
 
 ## Installation and model checks
 
-Linux sandbox prerequisites: **bubblewrap and socat**. Claude's Bash sandbox needs both; missing socat silently prevented engagement in live tests, blocking non-read-only commands and tests. Ubuntu AppArmor may also block Codex namespaces; the [policy fix](../lessons/2026-10-04-ubuntu-sandbox.md) requires human approval.
+Linux sandbox prerequisites: **bubblewrap and socat**. Claude's Bash sandbox needs both; missing socat silently prevented engagement in live tests, blocking non-read-only commands and tests. Ubuntu 24.04 AppArmor may also block Codex namespaces with `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`. When restricted unprivileged user namespaces are enabled and the bwrap profile is absent, `install.sh` prints the exact human-approval commands for the policy fix. This relaxes system security policy; obtain human approval first. Full access is not a routine substitute.
+
+After sandbox startup, GPU access may still be unavailable, network is disabled by default, and the home directory may be readable. Enable network per task; startup success does not imply unrestricted access.
 
 Default install supplies Claude-front skill; `--with-codex-front` adds the opt-in, unvalidated Codex-front skill. Human decides front separately. `--uninstall` removes installation; backups live outside skill directories in `~/.agent-runs/install-backups/` and must never be loaded.
 

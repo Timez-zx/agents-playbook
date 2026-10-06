@@ -12,19 +12,19 @@ This is the operating policy for a reusable, agent-agnostic collaboration librar
 
 The **front** is the agent the human talks to, selected by the tool they open. It is the Orchestrator and owns coordination, integration, verification, and outcomes. Planner owns decomposition and design; Scout, Ideator, Executor, Verifier, and Writer are specialist roles. Any agent can hold a role; switching fronts does not exchange assignments. Claude currently holds front and Planner.
 
-The loop is **use → record facts → propose with evidence → human approves → apply through a PR**. Lessons record facts, not behavior changes. Symlinked installation makes approved updates available next session without re-setup.
+The loop is **use → record facts → propose with evidence → human approves → apply through a PR**. Lessons hold general principles, not cases or behavior changes. Symlinked installation makes approved updates available next session without re-setup.
 
-[STATE.md](STATE.md) tracks validation and proposals; [roles.md](playbook/roles.md) assigns roles; [routing.md](playbook/routing.md) routes work; [models.md](playbook/models.md) records model facts. Profiles hold agent evidence; [lessons](lessons/README.md) record incidents; [proposals](proposals/README.md) record front/role decisions.
+[STATE.md](STATE.md) tracks validation and proposals; [roles.md](playbook/roles.md) assigns roles; [routing.md](playbook/routing.md) routes work; [models.md](playbook/models.md) records model facts. Profiles hold agent evidence; [lessons](lessons/README.md) hold general principles; [proposals](proposals/README.md) record front/role decisions.
 
 ## Reading and task overhead
 
-For repo work, read in order: this file → STATE → profiles of agents involved ([Claude](CLAUDE.md), [Codex](CODEX.md)) → roles → lessons with `status: new` → open proposals.
+For repo work, read in order: this file → STATE → profiles of agents involved ([Claude](CLAUDE.md), [Codex](CODEX.md)) → roles → [lessons index](lessons/README.md) → open proposals.
 
 For ordinary installed-skill sessions, read only `repo/STATE.md` at startup; open other documents as needed. The Claude skill also runs the silent model-change check described below. Never preload the whole playbook.
 
 Small questions, edits below about 30 lines, and quick lookups get done directly: no delegation, quota check, or lesson. Also act directly when writing a spec would cost more than the work. Run `agent-quota` only before delegation.
 
-After delivery, use one short background Writer call for a general surprise; skip it if none. The front supplies facts and checks prose and privacy. Upkeep stays in this repo, never the human's project repos; project-task work does not edit the playbook. Retry or drop maintenance failures without delaying the human or reporting them as task failures.
+After delivery, use one short background Writer call only for a general principle that is new or refines an existing lesson; otherwise skip. Judge generality across projects, models, and agents first; non-general observations never enter lessons. The front supplies facts and checks prose and privacy. Upkeep stays in this repo, never the human's project repos; project-task work does not edit the playbook. Retry or drop maintenance failures without delaying the human or reporting them as task failures.
 
 When normal collaboration reveals a better **general** way to work, the front proposes it after the task result, in one or two lines with evidence. This never blocks the task. Human approval authorizes applying the change through a behavior-change PR; without approval, retain only the lesson. Routine capture does not authorize redesign.
 
@@ -34,12 +34,12 @@ The owner requires agents not to keep shifting blame ("不能反复推锅"):
 
 1. **Front owns the outcome.** A delivered defect is also a front verification miss, whichever worker produced it.
 2. **Fix the process.** Classify causes as spec/handoff, execution, verification, tooling, or environment; fix the contract, test, template, or tool.
-3. **One incident, one lesson.** Profiles cite the same record; no rebuttal lessons. Settle disputes once by a fresh [tie-break](playbook/patterns.md) or the human. Reopen only with new evidence.
-4. **Weakness threshold.** Require two independent incidents or an explicit human statement. Single incidents remain lessons.
+3. **One incident, one record.** Agent-specific evidence goes in that agent's profile with its date; general principles go in lessons; operational facts go where used. No rebuttal records. Settle disputes once by a fresh [tie-break](playbook/patterns.md) or the human. Reopen only with new evidence.
+4. **Weakness threshold.** Require two independent incidents or an explicit human statement. Single incidents remain dated profile evidence.
 5. **Self-report first.** Disclosure counts in the agent's favor. Workers return facts rather than editing the playbook outside scope.
-6. **Evidence only.** Profile claims link their own lesson or quote the human. Either agent may edit profiles only by adding/removing evidence-linked claims; unsupported opinions cannot change assignments.
+6. **Evidence only.** Profile claims carry dated evidence inline or quote the human. Either agent may edit profiles only by adding/removing claims with dated evidence; unsupported opinions cannot change assignments.
 
-Profiles contain Strengths, Weaknesses, Roles held now, Candidates, Mitigations in force, and claim-specific evidence links. Candidates name alternatives for each held specialist role and deciding evidence, not established advantages. Environment/tooling quirks belong in Operating notes. Profile changes need PRs.
+Profiles contain Strengths, Weaknesses, Roles held now, Candidates, Mitigations in force, and claim-specific dated evidence inline. Candidates name alternatives for each held specialist role and deciding evidence, not established advantages. Environment/tooling quirks belong in Operating notes. Profile changes need PRs.
 
 ## Status and model facts
 
@@ -49,7 +49,7 @@ Model capability checks are event-driven, not scheduled research. At Claude-fron
 
 ## Front and role decisions
 
-When role evidence favors a front switch or reassignment, raise a short proposal in chat after delivery. Record it in a unique `proposals/YYYY-MM-DD-<slug>.md` using the [template](proposals/README.md): Proposal, Evidence (lesson links/dated owner quotes), Expected benefit, Risks, Trial plan, Decision (`accepted`, `rejected`, or `trial`, with date). Only the human fills the decision; silence is not approval.
+When role evidence favors a front switch or reassignment, raise a short proposal in chat after delivery. Record it in a unique `proposals/YYYY-MM-DD-<slug>.md` using the [template](proposals/README.md): Proposal, Evidence (dated profile evidence/owner quotes), Expected benefit, Risks, Trial plan, Decision (`accepted`, `rejected`, or `trial`, with date). Only the human fills the decision; silence is not approval.
 
 A better Planner can be delegated while the front retains coordination, verification, and the human conversation. Reassignment changes roles through a PR; neither agent promotes itself.
 
@@ -70,11 +70,11 @@ Repo text and commit messages are English; conversation matches the human's lang
 
 ### Facts: small direct commits to main
 
-Lessons, small STATE updates, and model-catalog facts may go directly to main after fact/privacy checks. Use unique lesson names and `role-evidence` for measured comparisons or this owner's preferences, not universal rankings. Replace illustrative names below:
+Lessons, small STATE updates, and model-catalog facts may go directly to main after fact/privacy checks. Name lessons by the fundamental problem; refine existing coverage before adding. Dated comparisons and owner preferences belong in profiles, not universal rankings or lessons. Replace illustrative names below:
 
 ```sh
 git pull --rebase
-git add lessons/YYYY-MM-DD-topic.md
+git add "lessons/<problem>.md"
 git commit -m "Record lesson about topic"
 git push
 ```
@@ -95,7 +95,7 @@ git commit -m "Describe the behavior change"
 git push -u origin change-branch
 ```
 
-PR text states the problem, resulting behavior, and validation; Writer drafts, front checks. Two agreeing lessons or one strongly evidenced lesson justify a promotion proposal, not automatic adoption. After approval, fold the rule into a PR, mark supporting lessons `promoted`, and link the rule. Retire obsolete lessons with a reason; preserve history.
+PR text states the problem, resulting behavior, and validation; Writer drafts, front checks. Propose a general lesson for promotion with evidence; adoption requires owner approval. Fold an approved general lesson into the playbook rule through a PR, mark it `promoted`, and link the rule. Retire obsolete lessons with a reason; preserve history.
 
 ### Privacy and review
 

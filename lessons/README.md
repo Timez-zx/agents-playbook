@@ -1,62 +1,53 @@
-# Lessons
+# General lessons
 
-Lessons record facts and suggested improvements; they do not change behavior. After delivery, capture a general surprise from substantial work: failure, measured routing outcome, tool quirk, or human output preference. Small tasks need no lesson; skip if nothing general was learned.
+Lessons hold general principles, not cases or behavior changes. Before recording anything, judge whether the observation would recur across projects, models, and agents. If it is not general, record no lesson and do not merge it into a class. Operational facts belong where used (install, handoff, budget, or routing notes); agent-specific evidence belongs in that agent's profile with its date.
 
-Use one short background Writer call. Front supplies facts, Writer writes, front checks facts/privacy. Human never waits; upkeep stays in this repo. Retry/drop failures without calling them task failures. One incident has one lesson; relevant profiles cite that record, never rebuttal lessons. Follow [AGENTS.md](../AGENTS.md).
+For a general observation, identify the fundamental problem. Refine the wording or “How to apply” items of the lesson already covering it; otherwise add one lesson named by that problem, `<problem>.md`. State the principle only; never narrate cases.
+
+After delivery, use one short background Writer call only for a new general principle or a refinement. Front supplies facts and checks prose/privacy. Human never waits; upkeep stays in this repo. Retry/drop failures without making them task failures. One incident, one record; no rebuttal records. Follow [AGENTS.md](../AGENTS.md).
 
 ## Template
 
-Use a unique `YYYY-MM-DD-<slug>.md` here:
-
 ```markdown
 ---
-date: YYYY-MM-DD
-tags: [tooling]
-status: new
-agents: ["Claude orchestrator, opus", "Codex worker, sol"]
+status: new|promoted
+updated: YYYY-MM-DD
 ---
 
-# Concrete lesson title
+# <principle as a title>
 
-## Context
+## Principle
 
-Relevant task/environment.
+The general principle.
 
-## What happened
+## Why it happens
 
-Observed facts; short sequence.
+The underlying mechanism.
 
-## Lesson
+## How to apply
 
-Suggested improvement and reason; not automatic adoption.
-
-## Evidence
-
-Commands, safe excerpts, measurements, links, verification limits.
+Concrete checks or actions; distinguish suggestions awaiting approval from rules.
 
 ## Applies when
 
-Conditions where it helps.
+Conditions where the principle helps.
+
+## Rules
+
+Links to promoted rules, or “none yet”.
 ```
 
-Tags: `routing`, `budget`, `tooling`, `pattern`, `writing`, `environment`, `verification`, `role-evidence`. Status: `new`, `promoted`, `retired`. Agents identify models/tiers; exact model reference is [models.md](../playbook/models.md). Record `role-evidence` as concrete comparisons or dated owner statements, not brand rankings.
+## Publication, promotion, and retirement
 
-## Publication and promotion
+General lesson additions/refinements, small STATE updates, and model-catalog facts may go directly to main after front fact/privacy review: pull/rebase → add `lessons/<problem>.md` → commit → push. Workers never commit/push. Resolve/rebase conflicts or defer upkeep; exact commands are in [AGENTS.md](../AGENTS.md#facts-small-direct-commits-to-main).
 
-Facts may go directly to main: pull/rebase → add unique lesson → commit → push. Front publishes after review; workers never commit/push. Resolve/rebase conflicts or defer upkeep. Exact commands and privacy policy: [AGENTS.md](../AGENTS.md).
+Propose a general lesson for promotion with evidence after delivery. Owner approval authorizes folding it into a playbook rule through a PR; mark it `promoted` and link the rules. Unapproved suggestions remain lessons. Retire obsolete lessons with a reason in the change; preserve history. Keep the set small: when lessons with `status: new` exceed about eight, the next repo-maintenance session merges, promotes, or retires before adding.
 
-Two agreeing lessons or one strong lesson justify a short evidence-based proposal after delivery. Human approves → behavior-change PR; unapproved → lesson only. Mark adopted support `promoted` with a rule link after approval; retire obsolete lessons with a reason. Never publish private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private numbers; use generalized evidence.
+Never publish private repo names, home paths, emails, hostnames, credentials, account/session IDs, or unpublished private numbers. Generalize observations; follow [writing.md](../playbook/writing.md) and [privacy policy](../AGENTS.md#privacy-and-review).
 
-## Recorded lessons
+Case records written before this restructuring are in git history before this change.
 
-- [Ubuntu sandbox startup](2026-10-04-ubuntu-sandbox.md)
-- [Review targets and instructions](2026-10-04-review-target-instructions.md)
-- [Cached Codex resume](2026-10-04-resume-cache.md)
-- [Writer readability](2026-10-04-writer-readability.md)
-- [Machine-readable quotas](2026-10-04-machine-readable-quotas.md)
-- [User-level skills reach workers](2026-10-04-user-skills-reach-workers.md)
-- [Claude worker sandbox/live resume](2026-10-04-claude-worker-sandbox.md)
-- [Read-only spec defect and independent review](2026-10-04-ro-tier-defect.md)
-- [Research definition changes need a falsifying test first](2026-10-06-definition-change-falsify-first.md)
-- [Large-thread growth cost](2026-10-04-thread-growth-cost.md)
-- [Owner's sol routing decision](2026-10-04-sol-routing-default.md)
+## Index
+
+- [Independent validation](independent-validation.md) — `new`: Validate important outputs against their real target with a check independent of the author; existing applications are rules, while the research-definition check awaits approval.
+- [Context cost](context-cost.md) — `promoted`: Reuse a session only while its carried context is small and relevant, because it is resent on every call even when cached.

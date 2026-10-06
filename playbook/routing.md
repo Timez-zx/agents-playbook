@@ -1,6 +1,6 @@
 # Routing rules
 
-Quality comes before cost. The [owner's 2026-10-04 experience](../lessons/2026-10-04-sol-routing-default.md) favors sol as close to astra on most tasks at lower cost; this is owner evidence, not a universal benchmark. Model IDs, tier mappings, supported effort, capability evidence, and check dates live in [models.md](models.md).
+Quality comes before cost. Owner, 2026-10-04: sol is close to astra on most tasks at lower cost; this is owner evidence, not a universal benchmark. Model IDs, tier mappings, supported effort, capability evidence, and check dates live in [models.md](models.md).
 
 | Work | Default | Escalation |
 |---|---|---|
@@ -21,4 +21,4 @@ Quality comes before cost. The [owner's 2026-10-04 experience](../lessons/2026-1
 
 Codex front uses these effort rules for itself and Claude tiers for workers. Specialist assignments remain unchanged unless approved separately. The human must make Codex front and ask it to orchestrate; its opt-in skill does not activate itself and remains [unvalidated](../STATE.md).
 
-To add an agent, provide a shared-interface wrapper, evidence-linked profile, routing rows, and model-catalog entries. Catalog facts may be updated directly; routing changes need human approval and a PR under [AGENTS.md](../AGENTS.md).
+To add an agent, provide a shared-interface wrapper, profile with dated evidence, routing rows, and model-catalog entries. Catalog facts may be updated directly; routing changes need human approval and a PR under [AGENTS.md](../AGENTS.md).

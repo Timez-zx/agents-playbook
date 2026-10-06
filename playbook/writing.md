@@ -48,4 +48,4 @@ Give the conclusion first, supporting points next, and detail only as needed. Pr
 
 Writer writes/rewrites persistent artifacts: READMEs, docs, PR text, lessons, review write-ups, and long reports. Front supplies structure and evidence, checks facts, and owns delivery. Small tasks and short replies skip Writer overhead but follow these rules. Worker coordination may be terse; human prose must stand on its own.
 
-Explain what changed, why, verification, and remaining uncertainty. A worker claim needs a test, diff read, or other-model check before becoming a verified fact. General lesson writing happens after delivery in one short background call; the human never waits for upkeep.
+Explain what changed, why, verification, and remaining uncertainty. A worker claim needs a test, diff read, or other-model check before becoming a verified fact. Only new general principles or refinements get a short background Writer call after delivery; the human never waits for upkeep.
