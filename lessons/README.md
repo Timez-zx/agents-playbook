@@ -57,5 +57,6 @@ Two agreeing lessons or one strong lesson justify a short evidence-based proposa
 - [User-level skills reach workers](2026-10-04-user-skills-reach-workers.md)
 - [Claude worker sandbox/live resume](2026-10-04-claude-worker-sandbox.md)
 - [Read-only spec defect and independent review](2026-10-04-ro-tier-defect.md)
+- [Research definition changes need a falsifying test first](2026-10-06-definition-change-falsify-first.md)
 - [Large-thread growth cost](2026-10-04-thread-growth-cost.md)
 - [Owner's sol routing decision](2026-10-04-sol-routing-default.md)
