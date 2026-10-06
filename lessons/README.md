@@ -1,10 +1,15 @@
 # General lessons
 
-Lessons hold general principles, not cases or behavior changes. Before recording anything, judge whether the observation would recur across projects, models, and agents. If it is not general, record no lesson and do not merge it into a class. Operational facts belong where used (install, handoff, budget, or routing notes); agent-specific evidence belongs in that agent's profile with its date.
+Lessons hold general principles, not cases or behavior changes. Roles (front, Writer, workers), STATE, and workflows W1–W6 are defined in [AGENTS.md](../AGENTS.md) and [patterns.md](../playbook/patterns.md).
 
-For a general observation, identify the fundamental problem. Refine the wording or “How to apply” items of the lesson already covering it; otherwise add one lesson named by that problem, `<problem>.md`. State the principle only; never narrate cases.
+Before recording anything, ask: would this observation change how an agent works on a different project, with a different model or tool? If yes, it is general. If it concerns one tool, environment, person, or project, it is not general: record no lesson. Put such an operational fact where it is used (install, handoff, budget, or routing notes), an owner preference in the rule document it affects (for example writing.md or routing.md), and agent-specific evidence, dated, in that agent's profile.
 
-After delivery, use one short background Writer call only for a new general principle or a refinement. Front supplies facts and checks prose/privacy. Human never waits; upkeep stays in this repo. Retry/drop failures without making them task failures. One incident, one record; no rebuttal records. Follow [AGENTS.md](../AGENTS.md).
+For a general observation, identify the fundamental problem behind it. If a lesson already states that problem, change it only when the observation adds a new kind of work where the principle applies (a new “How to apply” item) or corrects its wording; otherwise change nothing. If no lesson states that problem, add a new lesson file named after the problem, for example `independent-validation.md`. State the principle only; never narrate cases.
+
+- After delivery, make at most one short background Writer call, and only for a new principle or a refinement.
+- The front supplies facts and checks prose and privacy.
+- Upkeep stays in this repo and never makes the human wait; retry or drop failed upkeep without reporting it as a task failure.
+- One incident, one record: a lesson refinement, a dated profile entry, or a fact in the document that uses it; no rebuttal records.
 
 ## Template
 
@@ -49,5 +54,5 @@ Case records written before this restructuring are in git history before this ch
 
 ## Index
 
-- [Independent validation](independent-validation.md) — `new`: Validate important outputs against their real target with a check independent of the author; existing applications are rules, while the research-definition check awaits approval.
-- [Context cost](context-cost.md) — `promoted`: Reuse a session only while its carried context is small and relevant, because it is resent on every call even when cached.
+- [Validate important outputs independently against their real target](independent-validation.md) — `new`: a check that uses the author's own spec or understanding cannot find errors in it; existing applications are rules, while the research-definition check awaits approval.
+- [Reuse sessions only while their context stays small and relevant](context-cost.md) — `promoted`: carried context is resent on every call, even when cached.
