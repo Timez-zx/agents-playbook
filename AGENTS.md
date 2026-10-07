@@ -66,7 +66,7 @@ Roles, profiles, skills, and proposal records still follow the behavior-change P
 
 Keep a fixed clone (default `~/agents-playbook`) so installed symlinks remain valid. Interface: `install.sh [--with-codex-front] [--uninstall]`. Codex front is opt-in and unvalidated. Backups go to `~/.agent-runs/install-backups/`, outside skill directories; never load backed-up skills. Linux sandbox prerequisites are bubblewrap and socat; see [install notes](playbook/handoff.md).
 
-Repo text and commit messages are English; conversation matches the human's language. The Writer writes/rewrites persistent human-facing text; the front supplies facts and checks it before publication. Workers never commit or push.
+Repo text and commit messages are English. Conversation always uses the human's preferred language, whatever the language of code, tool output, or worker reports; switch only when the human explicitly asks for another language. The Writer writes/rewrites persistent human-facing text; the front supplies facts and checks it before publication. Workers never commit or push.
 
 ### Facts: small direct commits to main
 

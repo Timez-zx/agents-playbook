@@ -44,7 +44,7 @@ Give the conclusion first, supporting points next, and detail only as needed. Pr
 
 - Use tables for comparisons, prose for a single line of reasoning.
 
-- Match the human's language in conversation; repo artifacts and commit messages are English.
+- Always talk to the human in their preferred language, whatever the language of code, tool output, or worker reports; switch only when they explicitly ask for another language. Repo artifacts and commit messages are English.
 
 Writer writes/rewrites persistent artifacts: READMEs, docs, PR text, lessons, review write-ups, and long reports. Front supplies structure and evidence, checks facts, and owns delivery. Small tasks and short replies skip Writer overhead but follow these rules. Worker coordination may be terse; human prose must stand on its own.
 
