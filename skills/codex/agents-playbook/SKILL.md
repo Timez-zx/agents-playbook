@@ -87,7 +87,7 @@ Give Goal / Context / Scope (may/must not change) / Requirements / Acceptance (e
 
 Both wrappers export `AGENT_ROLE=worker` and append: “You are a worker. Do not delegate to other agents and do not run codex-task or claude-task.” Require scope, stop on ambiguity, readable code, no commit/push, bounded STATUS/CHANGES/VERIFICATION (run + NOT verified)/RISKS. User-level skills also reach workers; account for conflicts without assuming code-quality failure. Reviews never edit; report severity, file:line, defect, trigger or NO FINDINGS.
 
-Persistent prose gets Writer pass; front supplies structure and evidence, then checks facts. Short replies follow [repo/playbook/writing.md](repo/playbook/writing.md) directly: standalone claims, same-kind points, comfortable paragraphs, plain description before technical terms. Keep prose top-down, accurate, concise; use concrete facts, tables for comparisons, and a separate `Action:` if needed. Match human language; repo English.
+Persistent prose gets Writer pass; front supplies structure and evidence, then checks facts. Short replies follow [repo/playbook/writing.md](repo/playbook/writing.md) directly: standalone claims, same-kind points, comfortable paragraphs, plain description before technical terms. Keep prose top-down, accurate, concise; use concrete facts, tables for comparisons, and a separate `Action:` if needed. Always use the human's preferred language unless they explicitly ask for another; repo English.
 
 ## After delivery and upkeep
 
