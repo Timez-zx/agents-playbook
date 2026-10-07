@@ -1,6 +1,6 @@
 ---
 status: new
-updated: 2026-10-06
+updated: 2026-10-07
 ---
 
 # Validate important outputs independently against their real target
@@ -18,6 +18,7 @@ Tests and code review compare code with its spec; agreement does not establish t
 - **Permissions and sandboxes (rule):** Run live write probes inside and outside the working directory to check the actual permission boundary.
 - **Workers' “done” (rule):** Use a test, diff read, or other-model check before accepting completion.
 - **Human-facing documents (promoted rule):** Use an independent cold read with only the finished text to check what a reader understands.
+- **Measuring code and emulations (lesson, not a rule):** Validate measuring code and emulations independently before launching the runs that depend on them; run each validation outside the process and state of the thing being validated.
 - **Research definitions (suggestion awaiting owner approval):** When changing what a metric, baseline, estimator, or threshold means, or which samples it uses, run the cheapest falsifying test on the data that defines the claim the definition must satisfy, before writing a spec. Route such changes through W2, not W1. This suggestion is not yet a rule.
 
 ## Applies when
