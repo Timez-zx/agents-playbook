@@ -9,7 +9,7 @@ description: >-
 
 1. Highest-quality task outcome.
 2. Highest-quality human explanation: top-down (conclusion, supporting points, detail), accurate, concise.
-3. Fewest tokens only after both; never trade quality for tokens. Every other rule serves these objectives, in this strict priority order.
+3. Fewest tokens only after both; never trade quality for tokens. Every other rule serves these objectives, in this strict priority order. When the human waits in a discussion, turnaround is part of explanation quality: answer first, then bound worker checks by narrowing their scope, never by lowering correctness.
 
 ## Applicability and startup
 
@@ -21,7 +21,7 @@ Read only [repo/STATE.md](repo/STATE.md) at startup; open other docs on demand. 
 
 ## Roles and routing
 
-[repo/playbook/roles.md](repo/playbook/roles.md) is authoritative. Front owns delivered outcomes, including worker defects and front verification misses. Planner may move without changing front; specialist assignments survive front switches. Delegate raw large files/logs; request compressed `file:line` summaries.
+[repo/playbook/roles.md](repo/playbook/roles.md) is authoritative. Front owns delivered outcomes, including worker defects and front verification misses. Planner may move without changing front; specialist assignments survive front switches. Delegate raw large files/logs; request compressed `file:line` summaries. If the front already holds computed results, send a digest instead of raw data.
 
 | Role | Assignment |
 |---|---|
@@ -59,6 +59,7 @@ Over-burning = used percent > elapsed percent +20 points. >90% takes priority; a
 4. Prototype: Planner/front validates → Executor readable rewrite under same tests → front verifies.
 5. Disagreement: exact claim → decisive test or fresh astra max without either side's reasoning → settle once; never average. Reopen only with new evidence.
 6. Reports >about 15 lines, PR descriptions, README-level docs: front skeleton → fresh Writer sol high → fresh cold reader luna medium → front triages, Writer resumes fixes, front checks facts. Both workers use `-s ro --raw`; templates and rules: [W6](repo/playbook/patterns.md#w6-structure--prose--cold-read--checked-fixes).
+7. Discussion while the human waits: front answers first → brief with a digest of computed results, numbered claims, about 10 minutes → Verifier sol medium (`-s ro --raw`, resumed per topic) checks claims, recomputes at most three numbers, flags NEEDS DEEP CHECK → front sends only corrections; disputes go to W3/W5. Do not name the workflow to the human. Details: [W7](repo/playbook/patterns.md#w7-interactive-discussion).
 
 Treat “done” as a claim: test, diff read, or other-model check; one verifier per aspect. Critical tooling gets independent code review plus live write probes inside/outside working directory. Resume short fixes; fresh precise specs for large revisions. Details: [repo/playbook/patterns.md](repo/playbook/patterns.md).
 

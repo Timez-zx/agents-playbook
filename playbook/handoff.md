@@ -31,6 +31,8 @@ RISKS: assumptions, uncertainties, follow-ups
 
 Orchestrator skills exclude `AGENT_ROLE=worker` or prompts carrying a handoff contract. User-level skills/instructions still reach workers; account for possible conflicts with the handoff. The observed skill announcement had no assessed code-quality outcome.
 
+W7 discussion checks run with `--raw` and carry a shorter contract in the [discussion-check template](templates/discussion-check.md): VERDICT, POINTS with confidence, RECOMPUTED, NOT CHECKED.
+
 ## Shared review contract
 
 ```text
