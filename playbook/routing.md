@@ -8,6 +8,7 @@ Quality comes before cost. Owner, 2026-10-04: sol is close to astra on most task
 | Routine correctness review | Fresh Codex sol, high | Sol xhigh for deeper logic; astra after failure/uncertainty |
 | Subtle logic, concurrency, cross-module work, critical review | Codex sol, xhigh | Astra xhigh after failure/uncertainty |
 | Exact disputed claim | Decisive test or fresh astra, max | Tie-break only; omit both sides' reasoning |
+| Discussion check while the human waits ([W7](patterns.md#w7-interactive-discussion)) | Codex sol, medium; digest only, about 10 minutes, one resumed thread per topic | Sol high for subtle logic; disputes and NEEDS DEEP CHECK go to W3/W5 in the background |
 | Mechanical work/log summaries | Codex luna, medium | Sol high if the task exceeds the tier |
 | Bounded routine agentic coding | Codex reserve, medium | Sol high if it fails or is uncertain |
 | Scouting / routine Claude subtasks / ideation and planning | Claude haiku / sonnet / opus | Follow evidence and budget |

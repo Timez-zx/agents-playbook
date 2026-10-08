@@ -4,7 +4,7 @@
 2. Highest-quality explanation for the human: top-down (conclusion, supporting points, detail), accurate, concise.
 3. Fewest tokens, only after the first two are satisfied. Never trade quality for tokens.
 
-Every other rule serves these objectives, in this strict priority order.
+Every other rule serves these objectives, in this strict priority order. When the human waits in a discussion, turnaround is part of explanation quality: answer first, then bound worker checks by narrowing their scope, never by lowering correctness.
 
 ## How agents-playbook runs
 

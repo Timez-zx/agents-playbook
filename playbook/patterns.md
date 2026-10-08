@@ -62,4 +62,15 @@ Use for reports to the human over about 15 lines, PR descriptions, and README-le
 
 Writer assignment is independent of front. Codex remains Writer unless accepted reassignment or budget shift routes prose to Claude; keep `-s ro --raw` and the independent cold read. The process was [validated once with owner approval](../STATE.md) on 2026-10-04; [independent validation](../lessons/independent-validation.md) explains the cold-read principle. One report does not establish the process across document types.
 
+## W7: Interactive discussion
+
+Use when the human is waiting in the conversation for an answer or opinion about results already at hand. Do not name the workflow to the human (owner, 2026-10-08: "w7 我不希望每次都明说"). Roles do not change: the critic is the Verifier with a digest as input.
+
+1. **Front answers first** from the evidence it holds, with its confidence; it does not wait for workers.
+2. **Front writes a [discussion brief](templates/discussion-check.md):** a one-sentence question, the decision it serves, the data scope (the newest relevant results only), a digest of the computed numbers with the scripts that produced them, the front's numbered claims, and a time budget of about 10 minutes.
+3. **Verifier checks the claims against the digest** (Codex sol medium, high for subtle logic; `-s ro --raw`; one resumed thread per topic). It recomputes from raw data only to settle a disagreement, at most three numbers, and never widens the question or searches the web. Anything larger comes back as NEEDS DEEP CHECK.
+4. **Front merges quietly.** Agreement needs no message; a correction reaches the human as a short follow-up. A disagreement or NEEDS DEEP CHECK goes to W3 or W5 in the background, and the human sees both sides until it is settled. Allow at most two check rounds per question.
+
+Evidence, 2026-10-08: two read-only analysis rounds at sol xhigh, each given about 16 experiment directories and re-parsing raw data with web lookups, took about 23 and 26 minutes while the owner waited. Owner: "在一些快速讨论的时候 codex太墨迹了 想想办法 兼顾准确性和速度". W7 is a [trial](../STATE.md).
+
 Short replies follow [writing.md](writing.md) directly. After delivery, use one short background Writer call only for a general principle that is new or refines a lesson; otherwise skip. Evidence-based improvement proposals never block the task. Follow [AGENTS.md](../AGENTS.md).
