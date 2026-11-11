@@ -1,6 +1,6 @@
 # Model catalog
 
-This catalog records facts, not routing decisions. The seed below uses the supplied wrapper interface, session model metadata, and dated owner evidence; no independent model research has run. “Last checked” is the seed evidence date, not an availability guarantee. Unknown details are **not yet researched**. Routing policy lives in [routing.md](routing.md).
+This catalog records facts, not routing decisions. It combines local interface metadata, dated owner evidence, official documentation, and independent evaluations; evidence is identified by source and date. Availability is product-specific; catalog updates do not change routing. “Last checked” is the evidence date, not an availability guarantee. Unknown details are **not yet researched**. Routing policy lives in [routing.md](routing.md).
 
 ## Codex models
 
@@ -12,6 +12,7 @@ Effort levels below are exposed in this session where supplied; they do not guar
 | `gpt-reserve` | OpenAI | `reserve`, medium; other efforts not yet researched | Cheap agentic coding is the supplied routing use, not a measured capability; not yet researched | 2026-10-04 |
 | `gpt-6.1-sol` | OpenAI | `sol` (default), high; session: low, medium, high, xhigh, max, ultra | Owner, 2026-10-04: close to astra on most tasks, lower cost; Writer run measurements below, 2026-10-04 | 2026-10-04 |
 | `gpt-6-astra` | OpenAI | `astra`, xhigh; session: low, medium, high, xhigh, max, ultra | 2026-10-04: a fresh astra review found five high-severity defects (read-only writes, resume permission widening, signal cleanup, symlink ownership, sandbox fail-open); no same-task comparison with sol | 2026-10-04 |
+| `gpt-6.1-terra` | OpenAI | No wrapper tier. Local Codex default low; low through max exposed, plus prohibited ultra. API also supports none and defaults to medium. | Released 2026-10-26. Visual reasoning, computer use, writing; 1,050,000 context / 128,000 output ([official specifications](https://developers.openai.com/api/docs/models/gpt-6.1-terra)). Independent Coding Agent Index v2, 2026-10-26: 48 versus Sol 54 and Luna 31 ([evaluation](https://artificialanalysis.ai/articles/gpt-6-1-terra-pushes-the-cost-efficiency-frontier)); no local task evidence. | 2026-11-11 |
 | `gpt-6-sol` (legacy) | OpenAI | No wrapper tier; session: low, medium, high, xhigh, max, ultra | Session lists previous-generation workhorse; capabilities not yet researched | 2026-10-04 |
 | `gpt-5.6-sol` (legacy) | OpenAI | No wrapper tier; session: low, medium, high, xhigh, max, ultra | Session lists older-generation workhorse; capabilities not yet researched | 2026-10-04 |
 
@@ -28,7 +29,10 @@ These are owner-supplied model names. Exact provider IDs, effort support, and al
 | Fable 5.1 | Anthropic | No supplied wrapper tier; efforts not yet researched | Not yet researched; name supplied 2026-10-04 | 2026-10-04 |
 | Opus 5.5 | Anthropic | Opus family; exact alias/efforts not yet researched | Version-specific capability not yet researched; 2026-10-04: Opus front/Planner specified a read-only sandbox that allowed writes; Opus version was not recorded | 2026-10-04 |
 | Sonnet 5.5 | Anthropic | Sonnet family; exact alias/efforts not yet researched | Not yet researched; name supplied 2026-10-04 | 2026-10-04 |
+| Haiku 5.5 (`claude-haiku-5-5`) | Anthropic | Fixed provider ID. API efforts low, medium (default), high, xhigh, max; wrapper `haiku` resolution not verified. | Released 2026-10-07. Text/image input, text output; 1M context / 128K output ([official specifications](https://platform.claude.com/docs/en/models/haiku-5-5/overview)). Independent Decision Index v2, 2026-11-08: 77 versus Luna 76 at max effort, with higher cost and time ([evaluation](https://artificialanalysis.ai/articles/decision-index-v2)). | 2026-11-11 |
 | Haiku 4.5 | Anthropic | Haiku family; exact alias/efforts not yet researched | Version-specific capability not yet researched; 2026-10-04: live sandbox tests used Haiku without a recorded version; rw allowed inside writes and blocked outside writes/network, corrected ro disabled the Bash sandbox | 2026-10-04 |
+
+Observed removals, 2026-11-11: `gpt-5.5` left the local Codex list; OpenAI announced its Codex retirement on 2026-10-14, without affecting API access ([source](https://help.openai.com/en/articles/9624314-model-release-notes)). `claude-haiku-4-5-20251001` left the supplied Claude list but remains active on Anthropic's API ([source](https://platform.claude.com/docs/en/about-claude/model-deprecations)). Local list changes do not establish provider-wide retirement. Sources accessed 2026-11-11.
 
 The [Claude profile](../CLAUDE.md) holds owner observations about Claude generally; they do not establish version-specific capabilities.
 
